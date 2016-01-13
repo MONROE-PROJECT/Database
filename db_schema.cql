@@ -54,3 +54,35 @@ CREATE TABLE monroe_exp_ping (
 
     PRIMARY KEY ((dataversion, nodeid, interfacename), timestamp)
 );
+
+CREATE TABLE monroe_meta_device_modem (
+    dataversion    int,
+    nodeid         text,
+    interfacename  text,
+    timestamp      decimal,
+
+    dataid         text,
+    interfaceid    text,
+    mode           int,
+    operator       int,
+    sequencenumber bigint,
+    signalstrength int,
+
+    PRIMARY KEY ((dataversion, nodeid, interfacename), timestamp)
+);
+
+CREATE TABLE monroe_meta_device_gps (
+    dataversion        int,
+    nodeid             text,
+    timestamp          decimal,
+
+    altitude           decimal,
+    latitude           decimal,
+    longitude          decimal,
+    dataid             text,
+    nmea               text,
+    numberofsatellites int,
+    sequencenumber     bigint,
+
+    PRIMARY KEY ((dataversion, nodeid), timestamp)
+);
