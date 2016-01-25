@@ -14,4 +14,4 @@ In order to create the DB schema (and *drop* the data it contains), you can use 
 
 Please note the **drop** command on the first line.
 
-!!! @Rafael: could you please update the configuration details? !!!
+!!! @rleiva: could you please update the configuration details? !!!
