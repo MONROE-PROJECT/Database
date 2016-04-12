@@ -99,6 +99,7 @@ CREATE TABLE monroe_meta_device_gps (
     Longitude          decimal,
     Latitude           decimal,
     Altitude           decimal,
+    Speed              decimal,
     SatelliteCount     int,
     Nmea               text,
 
@@ -130,7 +131,7 @@ CREATE TABLE monroe_meta_node_sensor (
     
     ExperimentsRunning     text,
     
-    TempCpu                text,
+    Cpu                    text,
     
     RestServicesModems     int,
     RestServicesDlb        int,
@@ -142,15 +143,15 @@ CREATE TABLE monroe_meta_node_sensor (
     SessionTotal           bigint,
     SessionPercent         decimal,
     
-    CpuSystem              decimal,
-    CpuSteal               decimal,
-    CpuGuest               decimal,
-    CpuIoWait              decimal,
-    CpuIrq                 decimal,
-    CpuNice                decimal,
-    CpuIdle                decimal,
-    CpuUser                decimal,
-    CpuSoftIrq             decimal,
+    System                 text,
+    Steal                  text,
+    Guest                  text,
+    IoWait                 text,
+    Irq                    text,
+    Nice                   text,
+    Idle                   text,
+    User                   text,
+    SoftIrq                text,
     
     MemoryApps             bigint,
     MemoryFree             bigint,
