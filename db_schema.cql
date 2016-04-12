@@ -76,6 +76,7 @@ CREATE TABLE monroe_meta_device_modem (
     IpAddress      text,
     InternalIpAddress text,
     MccMnc         int,
+    Operator       text,
     Lac            int,
     Rsrp           int,
     Frequency      int,
@@ -133,15 +134,15 @@ CREATE TABLE monroe_meta_node_sensor (
     
     Cpu                    text,
     
-    RestServicesModems     int,
-    RestServicesDlb        int,
-    RestServicesUsbMonitor int,
+    Modems                 text,
+    Dlb                    text,
+    UsbMonitor             text,
     
-    SessionId              int,
-    SessionStart           int,
-    SessionCurrent         int,
-    SessionTotal           bigint,
-    SessionPercent         decimal,
+    Id                     text,
+    Start                  text,
+    Current                text,
+    Total                  text,
+    Percent                text,
     
     System                 text,
     Steal                  text,
@@ -153,9 +154,9 @@ CREATE TABLE monroe_meta_node_sensor (
     User                   text,
     SoftIrq                text,
     
-    MemoryApps             bigint,
-    MemoryFree             bigint,
-    MemorySwap             bigint,
+    Apps                   text,
+    Free                   text,
+    Swap                   text,
     
     PRIMARY KEY ((DataVersion, NodeId), Timestamp)
 );
@@ -166,15 +167,18 @@ CREATE TABLE monroe_meta_node_event (
     DataId             text,
     DataVersion        int,
     SequenceNumber     bigint,
-    EventType          int,
     
-    WatchdogFailed     text,
-    WatchdogRepaired   text,
-    WatchdogStatus     text,
-    MaintenanceStart   text,
-    MaintenanceStop    text,
-    SystemHalt         int,
-    SchedulingStarted  int,
+    EventType          text,
+    Message            text,
+    User               text,
+    
+    //WatchdogFailed     text,
+    //WatchdogRepaired   text,
+    //WatchdogStatus     text,
+    //MaintenanceStart   text,
+    //MaintenanceStop    text,
+    //SystemHalt         int,
+    //SchedulingStarted  int,
     
     PRIMARY KEY ((DataVersion, NodeId), Timestamp)
 );
