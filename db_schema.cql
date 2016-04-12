@@ -130,7 +130,7 @@ CREATE TABLE monroe_meta_node_sensor (
     
     ExperimentsRunning     text,
     
-    TempCpu                int,
+    TempCpu                text,
     
     RestServicesModems     int,
     RestServicesDlb        int,
