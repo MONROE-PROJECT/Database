@@ -123,44 +123,6 @@ CREATE TABLE monroe_meta_connectivity (
     PRIMARY KEY ((DataVersion, NodeId, InterfaceName), Timestamp)
 );
 
-CREATE TABLE monroe_meta_node_sensor (
-    NodeId                 text,
-    Timestamp              decimal,
-    DataId                 text,
-    DataVersion            int,
-    SequenceNumber         bigint,
-    
-    ExperimentsRunning     text,
-    
-    Cpu                    text,
-    
-    Modems                 text,
-    Dlb                    text,
-    UsbMonitor             text,
-    
-    Id                     text,
-    Start                  text,
-    Current                text,
-    Total                  text,
-    Percent                text,
-    
-    System                 text,
-    Steal                  text,
-    Guest                  text,
-    IoWait                 text,
-    Irq                    text,
-    Nice                   text,
-    Idle                   text,
-    User                   text,
-    SoftIrq                text,
-    
-    Apps                   text,
-    Free                   text,
-    Swap                   text,
-    
-    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
-);
-
 CREATE TABLE monroe_meta_node_event (
     NodeId             text,
     Timestamp          decimal,
@@ -179,6 +141,94 @@ CREATE TABLE monroe_meta_node_event (
     //MaintenanceStop    text,
     //SystemHalt         int,
     //SchedulingStarted  int,
+    
+    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
+);
+
+CREATE TABLE monroe_meta_node_sensor_experiments (
+    NodeId                 text,
+    Timestamp              decimal,
+    DataId                 text,
+    DataVersion            int,
+    SequenceNumber         bigint,
+    
+    Running                text,
+
+    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
+);
+
+CREATE TABLE monroe_meta_node_sensor_temp (
+    NodeId                 text,
+    Timestamp              decimal,
+    DataId                 text,
+    DataVersion            int,
+    SequenceNumber         bigint,
+      
+    Cpu                    text,
+    
+    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
+);
+
+CREATE TABLE monroe_meta_node_sensor_rest_services (
+    NodeId                 text,
+    Timestamp              decimal,
+    DataId                 text,
+    DataVersion            int,
+    SequenceNumber         bigint,
+    
+    Modems                 text,
+    Dlb                    text,
+    UsbMonitor             text,
+    
+    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
+);
+
+CREATE TABLE monroe_meta_node_sensor_session (
+    NodeId                 text,
+    Timestamp              decimal,
+    DataId                 text,
+    DataVersion            int,
+    SequenceNumber         bigint,
+    
+    Id                     text,
+    Start                  text,
+    Current                text,
+    Total                  text,
+    Percent                text,
+    
+    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
+);
+
+CREATE TABLE monroe_meta_node_sensor_cpu (
+    NodeId                 text,
+    Timestamp              decimal,
+    DataId                 text,
+    DataVersion            int,
+    SequenceNumber         bigint,
+    
+    System                 text,
+    Steal                  text,
+    Guest                  text,
+    IoWait                 text,
+    Irq                    text,
+    Nice                   text,
+    Idle                   text,
+    User                   text,
+    SoftIrq                text,
+    
+    PRIMARY KEY ((DataVersion, NodeId), Timestamp)
+);
+
+CREATE TABLE monroe_meta_node_sensor_memory (
+    NodeId                 text,
+    Timestamp              decimal,
+    DataId                 text,
+    DataVersion            int,
+    SequenceNumber         bigint,
+    
+    Apps                   text,
+    Free                   text,
+    Swap                   text,
     
     PRIMARY KEY ((DataVersion, NodeId), Timestamp)
 );
