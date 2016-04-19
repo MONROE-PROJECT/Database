@@ -19,6 +19,7 @@ Note: A json object must end with a newline \n (and should for performance
 """
 import json
 import time
+import datetime
 import os
 import sys
 from glob import iglob
@@ -145,22 +146,36 @@ def handle_file(filename, failed_dir, processed_dir, session):
             print("Executed bath on file {}".format(filename))
 
         # Success: Move the file we have already added to the database
-        dest_path = processed_dir + os.path.basename(filename)
+        dest_dir = processed_dir + str(datetime.date.today())
+        dest_path = os.path.join(dest_dir, os.path.basename(filename))
         if (session):
+            try:
+                os.stat(dest_dir)
+            except:
+                os.makedirs(dest_dir)
+
             os.rename(filename, dest_path)
-            if (session is None):
-                sys.stdout.write('.')
+        else:
+            print("Success with file {} moving to {}".format(filename,
+                                                             dest_path))
+        # if (session is None):
+        #    sys.stdout.write('.')
         return inserts
 
     # Fail: We could not parse the file or insert it into the database
     except Exception as error:
-        dest_path = failed_dir + os.path.basename(filename)
+        dest_dir = failed_dir + str(datetime.date.today())
+        dest_path = os.path.join(dest_dir, os.path.basename(filename))
         log_str = "{} in file {} moving to {}".format(
             error,
             filename,
             dest_path)
 
         if (session):
+            try:
+                os.stat(dest_dir)
+            except:
+                os.makedirs(dest_dir)
             os.rename(filename, dest_path)
             syslog.syslog(syslog.LOG_ERR, log_str)
         else:
@@ -179,14 +194,7 @@ def schedule_workers(in_dir,
     async_results = []
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
-    # For performance failed and processed dir should (probably)
-    # not be placed below in_dir in the directory tree
-    exclude = set([processed_dir, failed_dir])
-    for root, dirs, files in os.walk(in_dir, topdown=True):
-        # Exclude the failed and processed dirs by doing in place manipulating
-        # of the returned directory list. ONLY works with topdown=True!
-        dirs[:] = [d for d in dirs if os.path.join(in_dir, d) not in exclude]
-
+    for root, dirs, files in os.walk(in_dir):
         for filename in fnmatch.filter(files, '*.json'):
             path = os.path.join(root, filename)
             file_count += 1
@@ -254,9 +262,7 @@ def create_arg_parser():
         description=textwrap.dedent('''
             Parses .json files in in_dir and inserts them into Cassandra
             Cluster specified in -H/--hosts.
-            All directories must exist otherwise before start or unforseen
-            consequencs will happen.
-            '''))
+            All directories not existing will be created.'''))
     parser.add_argument('-u', '--user',
                         help="Cassandra username")
     parser.add_argument('-p', '--password',
@@ -283,14 +289,19 @@ def create_arg_parser():
                               "max={})").format(max_concurrency - 1))
     parser.add_argument('-I', '--indir',
                         metavar='DIR',
-                        default="/indir",
-                        help="Directory to scan (default /indir/)")
+                        default="/experiments/monroe",
+                        help=("Directory to scan (default "
+                              "/experiments/monroe/)"))
     parser.add_argument('-F', '--failed',
                         metavar='DIR',
-                        help="Failed files (default --indir + /failed/)")
+                        default="/experiments/failed",
+                        help=("Failed files (default "
+                              "/experiments/failed(-$DATE))"))
     parser.add_argument('-P', '--processed',
                         metavar='DIR',
-                        help="Processed files (default --indir + /processed/)")
+                        default="/experiments/processed",
+                        help=("Processed files files (default "
+                              "/experiments/processed(-$DATE))"))
     parser.add_argument('--debug',
                         action="store_true",
                         help="Do not execute queries or move files")
@@ -329,15 +340,8 @@ def parse_special_args(args, parser):
         db_password = args.password
 
     # Default values of failed and processed dirs i dependent on args.indir
-    if args.failed:
-        failed_dir = args.failed
-    else:
-        failed_dir = args.indir + "/failed/"
-
-    if args.processed:
-        processed_dir = args.processed
-    else:
-        processed_dir = args.indir + "/processed/"
+    failed_dir = os.path.realpath(args.failed) + os.sep
+    processed_dir = os.path.realpath(args.processed) + os.sep
 
     return (db_user, db_password, failed_dir, processed_dir)
 
@@ -348,6 +352,17 @@ if __name__ == '__main__':
     db_user, db_password, failed_dir, processed_dir = parse_special_args(
         args,
         parser)
+
+    if (failed_dir.startswith(os.path.realpath(args.indir) + os.sep) or
+            processed_dir.startswith(os.path.realpath(args.indir) + os.sep)):
+        log_str = ("--failed ({}) or --processed ({}) "
+                   "is a subpath of --indir ({})").format(failed_dir,
+                                                          processed_dir,
+                                                          args.indir)
+        if not args.debug:
+            syslog.syslog(log_str)
+        print log_str
+        raise SystemExit(1)
 
     # Assuming default port: 9042, clusters and sessions are longlived and
     # should be reused
