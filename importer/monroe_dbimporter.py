@@ -146,14 +146,8 @@ def handle_file(filename, failed_dir, processed_dir, session):
             print("Executed bath on file {}".format(filename))
 
         # Success: Move the file we have already added to the database
-        dest_dir = processed_dir + str(datetime.date.today())
-        dest_path = os.path.join(dest_dir, os.path.basename(filename))
+        dest_path = os.path.join(processed_dir, os.path.basename(filename))
         if (session):
-            try:
-                os.stat(dest_dir)
-            except:
-                os.makedirs(dest_dir)
-
             os.rename(filename, dest_path)
         else:
             print("Success with file {} moving to {}".format(filename,
@@ -164,18 +158,13 @@ def handle_file(filename, failed_dir, processed_dir, session):
 
     # Fail: We could not parse the file or insert it into the database
     except Exception as error:
-        dest_dir = failed_dir + str(datetime.date.today())
-        dest_path = os.path.join(dest_dir, os.path.basename(filename))
+        dest_path = os.path.join(failed_dir, os.path.basename(filename))
         log_str = "{} in file {} moving to {}".format(
             error,
             filename,
             dest_path)
 
         if (session):
-            try:
-                os.stat(dest_dir)
-            except:
-                os.makedirs(dest_dir)
             os.rename(filename, dest_path)
             syslog.syslog(syslog.LOG_ERR, log_str)
         else:
@@ -192,6 +181,20 @@ def schedule_workers(in_dir,
     file_count = 0
     pool = ThreadPool(processes=concurrency)
     async_results = []
+
+    # Create outdirs
+    dest_dir_processed = processed_dir + str(datetime.date.today())
+    try:
+        os.stat(dest_dir_processed)
+    except:
+        os.makedirs(dest_dir_processed)
+
+    dest_dir_failed = failed_dir + str(datetime.date.today())
+    try:
+        os.stat(dest_dir_failed)
+    except:
+        os.makedirs(dest_dir_failed)
+
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
     for root, dirs, files in os.walk(in_dir):
@@ -200,8 +203,8 @@ def schedule_workers(in_dir,
             file_count += 1
             result = pool.apply_async(handle_file,
                                       (path,
-                                       failed_dir,
-                                       processed_dir,
+                                       dest_dir_failed,
+                                       dest_dir_processed,
                                        session,))
             async_results.append(result)
 
@@ -210,6 +213,21 @@ def schedule_workers(in_dir,
     results = [async_result.get() for async_result in async_results]
     insert_count = sum(results)
     failed_count = len([e for e in results if e == 0])
+
+    # Remove empty dirs
+    try:
+        # Will only succed if the directory is empty
+        os.rmdir(dest_dir_failed)
+    except OSError as e:
+        # If the directory is not empty we do nothing
+        pass
+    try:
+        # Will only succed if the directory is empty
+        os.rmdir(dest_dir_processed)
+    except OSError as e:
+        # If the directory is not empty we do nothing
+        pass
+
     return (file_count, insert_count, failed_count)
 
 
@@ -353,8 +371,8 @@ if __name__ == '__main__':
         args,
         parser)
 
-    if (failed_dir.startswith(os.path.realpath(args.indir) + os.sep) or
-            processed_dir.startswith(os.path.realpath(args.indir) + os.sep)):
+    if (failed_dir.startswith(os.path.realpath(args.indir)+'/') or
+            processed_dir.startswith(os.path.realpath(args.indir)+'/')):
         log_str = ("--failed ({}) or --processed ({}) "
                    "is a subpath of --indir ({})").format(failed_dir,
                                                           processed_dir,
