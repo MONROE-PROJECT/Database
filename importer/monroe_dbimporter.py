@@ -98,10 +98,9 @@ def create_batch(json_store, print_stm=False):
     """
     Create Cassandra batch from JSONs in json_store.
 
-    If true print_stm will cause the stamenets to be printed on stdout
+    If true print_stm will cause the statements to be printed on stdout
     """
     inserts = 0
-
     batch = BatchStatement(consistency_level=ConsistencyLevel.ONE)
     for j in json_store:
         tablename = j['DataId'].replace('.', '_')
@@ -118,65 +117,116 @@ def create_batch(json_store, print_stm=False):
     return (inserts, batch)
 
 
-def handle_file(filename, failed_dir, processed_dir, session):
+def construct_filepath(filename, dest_dir, middlefix="", extension=None):
+    fname, fextension = os.path.splitext(filename)
+    if (extension is None):
+        extension = fextension
+    dest_name = "{}{}{}".format(fname, middlefix, extension)
+    return os.path.join(dest_dir, os.path.basename(dest_name))
+
+
+def handle_file(filename, failed_dir, processed_dir, session, batch_size):
     """
     Parse and insert file in db.
 
     Parse the file and tries to insert it into the database.
     move finished files to failed_dir and sucsseful to processed_dir.
     """
+    json_batches = []
+    nr_jsons = 0
+    nr_batches = 0
     try:
-        json_store = []
-
         # Sanity Check 1: Zero files size and existance check
         if os.stat(filename).st_size == 0:
             raise Exception("Zero file size")
 
+        json_store = []
         # Read and parse file
         with open(filename, 'r') as f:
             json_store.extend(parse_json(f))
 
-        inserts, batch = create_batch(
-            json_store,
-            session is None)
-
-        if (session):
-            session.execute(batch)
-        else:
-            print("Executed bath on file {}".format(filename))
-
-        # Success: Move the file we have already added to the database
-        dest_path = os.path.join(processed_dir, os.path.basename(filename))
+        nr_jsons = len(json_store)
+        json_batches = [json_store[i:i+batch_size] for i in
+                        xrange(0, len(json_store), batch_size)]
+        nr_batches = len(json_batches) - 1
+        fname, fextension = os.path.splitext(filename)
+        dest_path = fname + ".wip"
         if (session):
             os.rename(filename, dest_path)
-        else:
-            print("Success with file {} moving to {}".format(filename,
-                                                             dest_path))
-        # if (session is None):
-        #    sys.stdout.write('.')
-        return inserts
 
-    # Fail: We could not parse the file or insert it into the database
+        filename = dest_path
+    # Fail: We could not parse the file
     except Exception as error:
-        dest_path = os.path.join(failed_dir, os.path.basename(filename))
-        log_str = "{} in file {} moving to {}".format(
-            error,
-            filename,
-            dest_path)
-
+        dest_path = construct_filepath(filename, failed_dir, "_parse_error")
+        log_str = "{} in file, moving {} to {}".format(error,
+                                                       filename,
+                                                       dest_path)
+        print log_str
         if (session):
             os.rename(filename, dest_path)
             syslog.syslog(syslog.LOG_ERR, log_str)
-        else:
-            print log_str
+
         return 0
+
+    # Try to insert batches into db
+    # This code assuems there is no breakage during the import
+    # (ie the importer is not stopped while trying to import the batches)
+    # If so happens there will be a .wip file left in the indir
+    tot_inserts = 0
+    for batch_nr, jbatch in enumerate(json_batches):
+        middlefix = "_{}_{}".format(batch_nr, nr_batches)
+        try:
+            inserts, batch = create_batch(jbatch, session is None)
+            if (session):
+                session.execute(batch)
+            tot_inserts += inserts
+
+        except Exception as error:
+            dest_path = construct_filepath(filename,
+                                           failed_dir,
+                                           middlefix,
+                                           ".json")
+            log_str = ("{}, Failed with batch {} "
+                       "in file {} moving to {}").format(error,
+                                                         batch_nr,
+                                                         filename,
+                                                         dest_path)
+            print log_str
+            if (session):
+                syslog.syslog(syslog.LOG_ERR, log_str)
+                with open(dest_path, 'w') as f:
+                    for jsondict in jbatch:
+                        f.write(json.dumps(jsondict))
+                        f.write(os.linesep)
+        else:
+            # This is executed only if session.execute does not throw an error
+            dest_path = construct_filepath(filename,
+                                           processed_dir,
+                                           middlefix,
+                                           ".json")
+            if (session):
+                with open(dest_path, 'w') as f:
+                    for jsondict in jbatch:
+                        f.write(json.dumps(jsondict))
+                        f.write(os.linesep)
+            else:
+                print(("Executed batch {}_{} in file {} "
+                       "saving batch in {}").format(batch_nr,
+                                                    nr_batches,
+                                                    filename,
+                                                    dest_path))
+
+    if (session):
+        os.unlink(filename)
+    return tot_inserts
 
 
 def schedule_workers(in_dir,
                      failed_dir,
                      processed_dir,
                      concurrency,
-                     session):
+                     session,
+                     batch_size):
     """Traverse the directory tree and kick off workers to handle the files."""
     file_count = 0
     pool = ThreadPool(processes=concurrency)
@@ -205,7 +255,8 @@ def schedule_workers(in_dir,
                                       (path,
                                        dest_dir_failed,
                                        dest_dir_processed,
-                                       session,))
+                                       session,
+                                       batch_size,))
             async_results.append(result)
 
     pool.close()
@@ -236,7 +287,8 @@ def parse_files(session,
                 in_dir,
                 failed_dir,
                 processed_dir,
-                concurrency):
+                concurrency,
+                batch_size):
     """Scan in_dir for files."""
     while True:
         start_time = time.time()
@@ -247,7 +299,8 @@ def parse_files(session,
                                                     failed_dir,
                                                     processed_dir,
                                                     concurrency,
-                                                    session)
+                                                    session,
+                                                    batch_size)
 
         # Calculate time we should wait to satisfy the interval requirement
         elapsed = time.time() - start_time
@@ -305,6 +358,10 @@ def create_arg_parser():
                         help=("number of cores to utilize ("
                               "default 1, "
                               "max={})").format(max_concurrency - 1))
+    parser.add_argument('-b', '--batch_size',
+                        default=10,
+                        type=int,
+                        help="number of inserts in each batch (default 10)")
     parser.add_argument('-I', '--indir',
                         metavar='DIR',
                         default="/experiments/monroe",
@@ -396,23 +453,26 @@ if __name__ == '__main__':
               "Info and Statements are printed to stdout\n"
               "{} called with variables \nuser={} \npassword={} \nhost={} "
               "\nkeyspace={} \nindir={} \nfaileddir={} \nprocessedir={} "
-              "\ninterval={} \nConcurrency={}").format(CMD_NAME,
-                                                       db_user,
-                                                       db_password,
-                                                       args.hosts,
-                                                       args.keyspace,
-                                                       args.indir,
-                                                       failed_dir,
-                                                       processed_dir,
-                                                       args.interval,
-                                                       args.concurrency)
+              "\ninterval={} \nConcurrency={}\n"
+              "batch_size={}").format(CMD_NAME,
+                                      db_user,
+                                      db_password,
+                                      args.hosts,
+                                      args.keyspace,
+                                      args.indir,
+                                      failed_dir,
+                                      processed_dir,
+                                      args.interval,
+                                      args.concurrency,
+                                      args.batch_size)
 
     parse_files(session,
                 args.interval,
                 args.indir,
                 failed_dir,
                 processed_dir,
-                args.concurrency)
+                args.concurrency,
+                args.batch_size)
 
     if not args.debug:
         cluster.shutdown()
