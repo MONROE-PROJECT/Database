@@ -30,27 +30,15 @@ from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
 
 from cassandra.cluster import Cluster
-from cassandra.query import BatchStatement
-from cassandra.query import SimpleStatement
+# from cassandra.query import Statement
 from cassandra.query import dict_factory
 from cassandra import ConsistencyLevel
 from cassandra import InvalidRequest
 from cassandra.auth import PlainTextAuthProvider
 
 CMD_NAME = os.path.basename(__file__)
-
-
-def get_cql(j, tablename):
-    """Create the CQL INSERT statement string."""
-    # Flatten message
-    columns = j
-
-    headers = ','.join(columns.keys())
-    values_placeholder = ','.join('%s' for v in columns.values())
-    cql_string = "INSERT INTO {} ({}) VALUES ({})".format(tablename, headers,
-                                                          values_placeholder)
-
-    return (cql_string, columns.values())
+DEBUG = False
+VERBOSITY = 1
 
 
 def parse_json(f):
@@ -94,29 +82,6 @@ def parse_json(f):
     return jsons
 
 
-def create_batch(json_store, print_stm=False):
-    """
-    Create Cassandra batch from JSONs in json_store.
-
-    If true print_stm will cause the statements to be printed on stdout
-    """
-    inserts = 0
-    batch = BatchStatement(consistency_level=ConsistencyLevel.ONE)
-    for j in json_store:
-        tablename = j['DataId'].replace('.', '_')
-        stm_str, values = get_cql(j, tablename)
-        if (print_stm):
-            print("Statement: {} ({})".format(
-                                        stm_str,
-                                        ','.join(str(v) for v in values)))
-
-        stm = SimpleStatement(stm_str)
-        batch.add(stm, values)
-        inserts += 1
-
-    return (inserts, batch)
-
-
 def construct_filepath(filename, dest_dir, middlefix="", extension=None):
     fname, fextension = os.path.splitext(filename)
     if (extension is None):
@@ -125,16 +90,19 @@ def construct_filepath(filename, dest_dir, middlefix="", extension=None):
     return os.path.join(dest_dir, os.path.basename(dest_name))
 
 
-def handle_file(filename, failed_dir, processed_dir, session, batch_size):
+def handle_file(filename,
+                failed_dir,
+                processed_dir,
+                session,
+                prepared_statements):
     """
     Parse and insert file in db.
 
     Parse the file and tries to insert it into the database.
     move finished files to failed_dir and sucsseful to processed_dir.
     """
-    json_batches = []
+    json_statements = []
     nr_jsons = 0
-    nr_batches = 0
     try:
         # Sanity Check 1: Zero files size and existance check
         if os.stat(filename).st_size == 0:
@@ -146,79 +114,128 @@ def handle_file(filename, failed_dir, processed_dir, session, batch_size):
             json_store.extend(parse_json(f))
 
         nr_jsons = len(json_store)
-        json_batches = [json_store[i:i+batch_size] for i in
-                        xrange(0, len(json_store), batch_size)]
-        nr_batches = len(json_batches) - 1
         fname, fextension = os.path.splitext(filename)
         dest_path = fname + ".wip"
-        if (session):
+        if not DEBUG:
             os.rename(filename, dest_path)
 
         filename = dest_path
     # Fail: We could not parse the file
     except Exception as error:
-        dest_path = construct_filepath(filename, failed_dir, "_parse_error")
+        dest_path = construct_filepath(filename, failed_dir, "_parse-error")
         log_str = "{} in file, moving {} to {}".format(error,
                                                        filename,
                                                        dest_path)
-        print log_str
-        if (session):
+        if VERBOSITY > 1:
+            print log_str
+        if not DEBUG:
             os.rename(filename, dest_path)
             syslog.syslog(syslog.LOG_ERR, log_str)
 
-        return 0
+        return {'inserts': -1, 'failed': 0}
 
-    # Try to insert batches into db
+    # Try to insert queries into db
     # This code assuems there is no breakage during the import
-    # (ie the importer is not stopped while trying to import the batches)
+    # (ie the importer is not stopped while trying to do inserts)
     # If so happens there will be a .wip file left in the indir
-    tot_inserts = 0
-    for batch_nr, jbatch in enumerate(json_batches):
-        middlefix = "_{}_{}".format(batch_nr, nr_batches)
+    # and we are left in incosisten state that needs manual handling
+    failed_inserts = []
+    processed_inserts = []
+    for nr, j in enumerate(json_store):
         try:
-            inserts, batch = create_batch(jbatch, session is None)
-            if (session):
-                session.execute(batch)
-            tot_inserts += inserts
+            if not DEBUG:
+                data_id = j['DataId'].lower()
+                session.execute(prepared_statements[data_id],
+                                [json.dumps(j)])
+            processed_inserts.append(nr)
 
         except Exception as error:
-            dest_path = construct_filepath(filename,
-                                           failed_dir,
-                                           middlefix,
-                                           ".json")
-            log_str = ("{}, Failed with batch {} "
-                       "in file {} moving to {}").format(error,
-                                                         batch_nr,
-                                                         filename,
-                                                         dest_path)
-            print log_str
-            if (session):
-                syslog.syslog(syslog.LOG_ERR, log_str)
-                with open(dest_path, 'w') as f:
-                    for jsondict in jbatch:
-                        f.write(json.dumps(jsondict))
-                        f.write(os.linesep)
-        else:
-            # This is executed only if session.execute does not throw an error
-            dest_path = construct_filepath(filename,
-                                           processed_dir,
-                                           middlefix,
-                                           ".json")
-            if (session):
-                with open(dest_path, 'w') as f:
-                    for jsondict in jbatch:
-                        f.write(json.dumps(jsondict))
-                        f.write(os.linesep)
-            else:
-                print(("Executed batch {}_{} in file {} "
-                       "saving batch in {}").format(batch_nr,
-                                                    nr_batches,
-                                                    filename,
-                                                    dest_path))
+            failed_inserts.append((nr, error))
 
-    if (session):
-        os.unlink(filename)
-    return tot_inserts
+    # If all is ok move file as-is to processed (low-cost)
+    if len(failed_inserts) == 0:
+        dest_path = construct_filepath(filename,
+                                       processed_dir,
+                                       "",
+                                       ".json")
+        log_str = ("Succeded {} insert(s) (all) from file {} "
+                   "moving to {}").format(nr_jsons,
+                                          filename,
+                                          dest_path)
+        if VERBOSITY > 1:
+            print log_str
+        if not DEBUG:
+            os.rename(filename, dest_path)
+            syslog.syslog(syslog.LOG_INFO, log_str)
+
+    # IF all is bad move file as-is to failed (low-cost)
+    elif len(failed_inserts) == nr_jsons:
+        dest_path = construct_filepath(filename,
+                                       failed_dir,
+                                       "",
+                                       ".json")
+
+        log_str = ("Failed {} (all) insert(s) in file {} "
+                   "moving to {}; ").format(nr_jsons,
+                                            filename,
+                                            dest_path)
+        for nr, error in failed_inserts:
+            log_str += "{} Failed with {}, ".format(nr, error)
+
+        if VERBOSITY > 1:
+            print log_str
+        if not DEBUG:
+            os.rename(filename, dest_path)
+            syslog.syslog(syslog.LOG_ERR, log_str)
+
+    # If some fail and some succed write the ones that failed to failed dir
+    # and rest to processed dir (high-cost)
+    else:
+        # 0 = nr failed, 1 = error message
+        nr_failed = [e[0] for e in failed_inserts]
+        middlefix_failed = "_{}".format("-".join(nr_failed))
+        dest_path_failed = construct_filepath(filename,
+                                              failed_dir,
+                                              middlefix_failed,
+                                              ".json")
+
+        middlefix_processed = "_{}".format("-".join(processed_inserts))
+        dest_path_processed = construct_filepath(filename,
+                                                 processed_dir,
+                                                 middlefix_processed,
+                                                 ".json")
+        log_str_error = ("Failed {} ({}) inserts in file {} "
+                         "saving in {};").format(len(failed_inserts),
+                                                 nr_jsons,
+                                                 filename,
+                                                 dest_path_failed)
+        for nr, error in failed_inserts:
+            log_str_error += "{} Failed with {}, ".format(nr, error)
+
+        log_str_processed = ("Succeded with {} ({}) insert(s) in file {} "
+                             "saving in {}").format(len(processed_inserts),
+                                                    nr_jsons,
+                                                    filename,
+                                                    dest_path_processed)
+        if VERBOSITY > 1:
+            print log_str_processed
+            print log_str_error
+        if not DEBUG:
+            os.unlink(filename)
+            syslog.syslog(syslog.LOG_ERR, log_str_error)
+            syslog.syslog(syslog.LOG_INFO, log_str_processed)
+
+            with open(dest_path_failed, 'w') as f:
+                for nr, error in failed_inserts:
+                    f.write(json.dumps(json_store[nr]))
+                    f.write(os.linesep)
+
+            with open(dest_path_processed, 'w') as f:
+                for nr in processed_inserts:
+                    f.write(json.dumps(json_store[nr]))
+                    f.write(os.linesep)
+
+    return {'inserts': len(processed_inserts), 'failed': len(failed_inserts)}
 
 
 def schedule_workers(in_dir,
@@ -226,7 +243,7 @@ def schedule_workers(in_dir,
                      processed_dir,
                      concurrency,
                      session,
-                     batch_size):
+                     prepared_statements):
     """Traverse the directory tree and kick off workers to handle the files."""
     file_count = 0
     pool = ThreadPool(processes=concurrency)
@@ -256,14 +273,19 @@ def schedule_workers(in_dir,
                                        dest_dir_failed,
                                        dest_dir_processed,
                                        session,
-                                       batch_size,))
+                                       prepared_statements,))
             async_results.append(result)
 
     pool.close()
     pool.join()
     results = [async_result.get() for async_result in async_results]
-    insert_count = sum(results)
-    failed_count = len([e for e in results if e == 0])
+    # Parse errors generate inserts = -1, failed = 0
+    insert_count = sum([e['inserts'] for e in results if e['inserts'] > 0])
+    failed_count = sum([e['failed'] for e in results])
+    failed_parse_files_count = len([e for e in results if e['inserts'] < 0])
+    failed_insert_files_count = len([e for e in results
+                                     if (e['inserts'] >= 0 and
+                                         e['inserts'] < e['failed'])])
 
     # Remove empty dirs
     try:
@@ -279,7 +301,11 @@ def schedule_workers(in_dir,
         # If the directory is not empty we do nothing
         pass
 
-    return (file_count, insert_count, failed_count)
+    return (file_count,
+            insert_count,
+            failed_count,
+            failed_parse_files_count,
+            failed_insert_files_count)
 
 
 def parse_files(session,
@@ -288,37 +314,50 @@ def parse_files(session,
                 failed_dir,
                 processed_dir,
                 concurrency,
-                batch_size):
+                prepared_statements):
     """Scan in_dir for files."""
     while True:
         start_time = time.time()
-
-        print('Start parsing files.')
-        file_count, insert_count, failed_count = schedule_workers(
-                                                    in_dir,
-                                                    failed_dir,
-                                                    processed_dir,
-                                                    concurrency,
-                                                    session,
-                                                    batch_size)
+        if VERBOSITY > 0:
+            print('Start parsing files.')
+        (files,
+         inserts,
+         failed_inserts,
+         parse_error_files,
+         insert_error_files) = schedule_workers(in_dir,
+                                                failed_dir,
+                                                processed_dir,
+                                                concurrency,
+                                                session,
+                                                prepared_statements)
 
         # Calculate time we should wait to satisfy the interval requirement
         elapsed = time.time() - start_time
-        log_str = ("Parsing {} files and doing {} inserts took {} s, {} "
-                   " files failed").format(file_count,
-                                           insert_count,
-                                           elapsed,
-                                           failed_count)
-        if (session):
+        log_str = ("Parsing {} files and doing "
+                   "{} inserts took {} s; "
+                   "{} inserts").format(files,
+                                        inserts,
+                                        elapsed,
+                                        failed_inserts)
+        if parse_error_files + insert_error_files > 0:
+            log_str += (" and {} files (parse error: {},"
+                        " insert error (full or partly): {})"
+                        "").format(insert_error_files + parse_error_files,
+                                   parse_error_files,
+                                   insert_error_files)
+        log_str += " failed"
+        if not DEBUG:
             syslog.syslog(log_str)
-        print log_str
+        if VERBOSITY > 0:
+            print log_str
         # Wait if interval > 0 else finish loop and return
         if (interval > 0):
             wait = interval - elapsed if (interval - elapsed > 0) else 0
             log_str = "Now waiting {} s before next run".format(wait)
-            if (session):
+            if not DEBUG:
                 syslog.syslog(log_str)
-            print log_str
+            if VERBOSITY > 0:
+                print log_str
             time.sleep(wait)
         else:
             break
@@ -358,10 +397,11 @@ def create_arg_parser():
                         help=("number of cores to utilize ("
                               "default 1, "
                               "max={})").format(max_concurrency - 1))
-    parser.add_argument('-b', '--batch_size',
-                        default=10,
+    parser.add_argument('--verbosity',
+                        default=1,
                         type=int,
-                        help="number of inserts in each batch (default 10)")
+                        choices=xrange(0, 3),
+                        help="Verbosity level 0-2(default 1)")
     parser.add_argument('-I', '--indir',
                         metavar='DIR',
                         default="/experiments/monroe",
@@ -427,15 +467,16 @@ if __name__ == '__main__':
     db_user, db_password, failed_dir, processed_dir = parse_special_args(
         args,
         parser)
+    DEBUG = args.debug
+    VERBOSITY = args.verbosity
 
     if (failed_dir.startswith(os.path.realpath(args.indir)+'/') or
             processed_dir.startswith(os.path.realpath(args.indir)+'/')):
         log_str = ("--failed ({}) or --processed ({}) "
-                   "is a subpath of --indir ({})").format(failed_dir,
-                                                          processed_dir,
-                                                          args.indir)
-        if not args.debug:
-            syslog.syslog(log_str)
+                   "is a subpath of --indir ({})"
+                   ", exiting").format(failed_dir, processed_dir, args.indir)
+        if not DEBUG:
+            syslog.syslog(syslog.LOG_ERR, log_str)
         print log_str
         raise SystemExit(1)
 
@@ -443,28 +484,32 @@ if __name__ == '__main__':
     # should be reused
     session = None
     cluster = None
-    if not args.debug:
+    prepared_statements = {}
+    if not DEBUG:
         auth = PlainTextAuthProvider(username=db_user, password=db_password)
         cluster = Cluster(args.hosts, auth_provider=auth)
         session = cluster.connect(args.keyspace)
         session.row_factory = dict_factory
+        table_names = cluster.metadata.keyspaces[args.keyspace].tables.keys()
+        for table_name in table_names:
+            query = 'INSERT INTO {} JSON ?'.format(table_name)
+            data_id = table_name.replace('_', '.')
+            prepared_statements[data_id] = session.prepare(query)
     else:
         print("Debug mode: will not insert any posts or move any files\n"
               "Info and Statements are printed to stdout\n"
               "{} called with variables \nuser={} \npassword={} \nhost={} "
               "\nkeyspace={} \nindir={} \nfaileddir={} \nprocessedir={} "
-              "\ninterval={} \nConcurrency={}\n"
-              "batch_size={}").format(CMD_NAME,
-                                      db_user,
-                                      db_password,
-                                      args.hosts,
-                                      args.keyspace,
-                                      args.indir,
-                                      failed_dir,
-                                      processed_dir,
-                                      args.interval,
-                                      args.concurrency,
-                                      args.batch_size)
+              "\ninterval={} \nConcurrency={}\n").format(CMD_NAME,
+                                                         db_user,
+                                                         db_password,
+                                                         args.hosts,
+                                                         args.keyspace,
+                                                         args.indir,
+                                                         failed_dir,
+                                                         processed_dir,
+                                                         args.interval,
+                                                         args.concurrency)
 
     parse_files(session,
                 args.interval,
@@ -472,7 +517,7 @@ if __name__ == '__main__':
                 failed_dir,
                 processed_dir,
                 args.concurrency,
-                args.batch_size)
+                prepared_statements)
 
-    if not args.debug:
+    if not DEBUG:
         cluster.shutdown()
