@@ -16,6 +16,7 @@ CREATE TABLE devices (
     DisplayName  text,
     HostName     text,
     Interfaces   list<text>,
+	IfDetails    map<text, text>,
     Latitude     decimal,
     Longitude    decimal,
     Make         text,
