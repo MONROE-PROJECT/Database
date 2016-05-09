@@ -2,6 +2,8 @@
 # This script compresses all the JSON files in the failed and processed folders that do not correspond to the current date.
 # It should be run from cron after midnight.
 
+shopt -s nullglob
+
 backupPath=/experiments/backups
 logPath=/var/log/autocopy.log
 srcPath=/experiments
@@ -23,7 +25,7 @@ echo Autocopy running at `date -I'seconds'`
 function DoFolder {
 	cd ${srcPath}/${1}
 	for folder in *; do
-		if (("$folder" != "$today")); then
+		if [ "${folder}" != "${today}" ]; then
 			destFile=${backupPath}/${1}-${folder}.txz
 			echo Processing $1 folder ${folder} into ${destFile}
 			tar cJf ${destFile} ${folder}/
