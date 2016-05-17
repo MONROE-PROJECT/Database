@@ -79,7 +79,6 @@ CREATE TABLE monroe_meta_device_modem (
     Ecio           int,
     ENodebId       int,
     Iccid          text,
-    InterfaceName  text,
     Imsi           text,
     ImsiMccMnc     int,
     Imei           text,
@@ -129,12 +128,11 @@ CREATE TABLE monroe_meta_connectivity (
     SequenceNumber     bigint,
     
     Iccid              text,
-    InterfaceId        text,
     MccMnc             int,
     Mode               int,
     Rssi               int,
     
-    PRIMARY KEY (NodeId, InterfaceId)
+    PRIMARY KEY (NodeId, Iccid)
 );
 CREATE CUSTOM INDEX i_monroe_meta_connectivity_timestamp on monroe_meta_connectivity(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
