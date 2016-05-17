@@ -278,15 +278,29 @@ def schedule_workers(in_dir,
 
     pool.close()
     pool.join()
-    results = [async_result.get() for async_result in async_results]
-    # Parse errors generate inserts = -1, failed = 0
-    insert_count = sum([e['inserts'] for e in results if e['inserts'] > 0])
-    failed_count = sum([e['failed'] for e in results])
-    failed_parse_files_count = len([e for e in results if e['inserts'] < 0])
-    failed_insert_files_count = len([e for e in results
-                                     if (e['inserts'] >= 0 and
-                                         e['inserts'] < e['failed'])])
+    # TODO: FIX This bug :
+    # File "monroe_dbimporter.py", line 281, in schedule_workers
+    # results = [async_result.get() for async_result in async_results]
+    # File "/usr/lib/python2.7/multiprocessing/pool.py", line 567, in get
+    # raise self._value
+    # The bug seams to only trigger when "parts of a file is faulty"
+    # Workaround disable ouput for now
 
+    DEMO_WORKAROUND = True
+    if (DEMO_WORKAROUND):
+        insert_count = 0
+        failed_count = 0
+        failed_parse_files_count = 0
+        failed_insert_files_count = 0
+    else:
+        results = [async_result.get() for async_result in async_results]
+        # Parse errors generate inserts = -1, failed = 0
+        insert_count = sum([e['inserts'] for e in results if e['inserts'] > 0])
+        failed_count = sum([e['failed'] for e in results])
+        failed_parse_files_count = len([e for e in results if e['inserts'] < 0])
+        failed_insert_files_count = len([e for e in results
+                                        if (e['inserts'] >= 0 and
+                                            e['inserts'] < e['failed'])])
     # Remove empty dirs
     try:
         # Will only succed if the directory is empty
