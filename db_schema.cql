@@ -72,7 +72,8 @@ CREATE TABLE monroe_meta_device_modem (
     DataVersion    int,
     SequenceNumber bigint,
     
-    Cid            int,
+    InterfaceName  text,
+	Cid            int,
     DeviceMode     int,
     DeviceSubmode  int,
     DeviceState    int,
