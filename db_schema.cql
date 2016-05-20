@@ -116,9 +116,9 @@ CREATE TABLE monroe_meta_device_gps (
     SatelliteCount     int,
     Nmea               text,
 
-    PRIMARY KEY (NodeId, SequenceNumber, Timestamp)
+    PRIMARY KEY (NodeId, Timestamp, SequenceNumber)
 );
-CREATE CUSTOM INDEX i_monroe_meta_device_gps_timestamp on monroe_meta_device_gps(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
+/*CREATE CUSTOM INDEX i_monroe_meta_device_gps_timestamp on monroe_meta_device_gps(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
 
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_meta_connectivity (
