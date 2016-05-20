@@ -60,7 +60,7 @@ CREATE TABLE monroe_exp_ping (
     Host           text,
     Rtt            double,
 
-    PRIMARY KEY (NodeId, Iccid)
+    PRIMARY KEY (NodeId, Iccid, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_exp_ping_timestamp on monroe_exp_ping(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
@@ -97,7 +97,7 @@ CREATE TABLE monroe_meta_device_modem (
     Rscp           int,
     Rssi           int,
 
-    PRIMARY KEY (NodeId, Iccid)
+    PRIMARY KEY (NodeId, Iccid, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_meta_device_modem_timestamp on monroe_meta_device_modem(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
@@ -116,7 +116,7 @@ CREATE TABLE monroe_meta_device_gps (
     SatelliteCount     int,
     Nmea               text,
 
-    PRIMARY KEY (NodeId)
+    PRIMARY KEY (NodeId, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_meta_device_gps_timestamp on monroe_meta_device_gps(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
@@ -129,11 +129,12 @@ CREATE TABLE monroe_meta_connectivity (
     SequenceNumber     bigint,
     
     Iccid              text,
+	InterfaceName      text,
     MccMnc             int,
     Mode               int,
     Rssi               int,
     
-    PRIMARY KEY (NodeId, Iccid)
+    PRIMARY KEY (NodeId, Iccid, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_meta_connectivity_timestamp on monroe_meta_connectivity(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
@@ -173,7 +174,7 @@ CREATE TABLE monroe_meta_node_sensor (
     Free                   text,
     Swap                   text,
     
-    PRIMARY KEY (NodeId)
+    PRIMARY KEY (NodeId, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_meta_node_sensor_timestamp on monroe_meta_node_sensor(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
@@ -197,7 +198,7 @@ CREATE TABLE monroe_meta_node_event (
     //SystemHalt         int,
     //SchedulingStarted  int,
     
-    PRIMARY KEY (NodeId)
+    PRIMARY KEY (NodeId, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_meta_node_event_timestamp on monroe_meta_node_event(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
@@ -221,6 +222,6 @@ CREATE TABLE monroe_exp_http (
 	Speed          double,
     Port           text,
 
-    PRIMARY KEY (NodeId, Iccid)
+    PRIMARY KEY (NodeId, Iccid, SequenceNumber, Timestamp)
 );
 CREATE CUSTOM INDEX i_monroe_exp_http on monroe_exp_http(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
