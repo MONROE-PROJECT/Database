@@ -225,3 +225,26 @@ CREATE TABLE monroe_exp_http (
     PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
 /*CREATE CUSTOM INDEX i_monroe_exp_http on monroe_exp_http(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
+
+
+CREATE TABLE monroe_exp_http_download (
+    NodeId         text,
+    Guid           text,
+    Timestamp      decimal,
+    SequenceNumber bigint,
+    DataId         text,
+    DataVersion    int,
+
+    Operator       text,
+    Iccid          text,
+
+    TotalTime      double,
+    Bytes          int,
+    SetupTime      double,
+    DownloadTime   double,
+    Host           text,
+    Speed          double,
+    Port           text,
+
+    PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
+);
