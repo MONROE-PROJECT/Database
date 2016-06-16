@@ -302,8 +302,9 @@ CREATE TABLE monroe_exp_tstat_http (
     path_content_type text,
     referer_server    text,
     user_agent_range  text,
-    location          text,
-
+    cookie_location          text,
+    dnt_set_cookie          text,
+    
     PRIMARY KEY ((NodeId, Iccid), time_abs, c_ip, c_port, s_ip, s_port)
 );
 
