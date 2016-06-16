@@ -283,7 +283,7 @@ CREATE TABLE monroe_exp_tstat_udp (
 
     fqdn        text,
 
-    PRIMARY KEY ((NodeId, Iccid), c_first_abs)
+    PRIMARY KEY ((NodeId, Iccid), c_first_abs, c_ip, c_port, s_ip, s_port)
 );
 
 CREATE TABLE monroe_exp_tstat_http (
@@ -291,7 +291,7 @@ CREATE TABLE monroe_exp_tstat_http (
     Iccid             text,
 
     /* We decided to mantain the same formalism of the tstat/mPlane project */
-    cs_c_ip           text,
+    c_ip           text,
     c_port            int,
     s_ip              text,
     s_port            int,
@@ -304,7 +304,7 @@ CREATE TABLE monroe_exp_tstat_http (
     user_agent_range  text,
     location          text,
 
-    PRIMARY KEY ((NodeId, Iccid), time_abs)
+    PRIMARY KEY ((NodeId, Iccid), time_abs, c_ip, c_port, s_ip, s_port)
 );
 
 CREATE TABLE monroe_exp_tstat_tcp_complete (
@@ -443,7 +443,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     req_tm            decimal,
     res_tm            decimal,
 
-    PRIMARY KEY ((NodeId, Iccid), first, last)
+    PRIMARY KEY ((NodeId, Iccid), first, last, c_ip, c_port, s_ip, s_port)
 );
 
 CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
@@ -496,5 +496,5 @@ CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
     p2p_t        int,
     http_t       int,
 
-    PRIMARY KEY ((NodeId, Iccid), first, last)
+    PRIMARY KEY ((NodeId, Iccid), first, last, c_ip, c_port, s_ip, s_port)
 );
