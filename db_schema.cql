@@ -173,6 +173,13 @@ CREATE TABLE monroe_meta_node_sensor (
     Apps                   text,
     Free                   text,
     Swap                   text,
+	
+	usb0                   text,
+	usb0charging           text,
+	usb1                   text,
+	usb1charging           text,
+	usb2                   text,
+	usb2charging           text,
 
     PRIMARY KEY (NodeId, Timestamp, SequenceNumber)
 );

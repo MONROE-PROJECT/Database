@@ -28,6 +28,7 @@ import textwrap
 import syslog
 from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
+import monroevalidator
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
@@ -145,6 +146,8 @@ def handle_file(filename,
         try:
             if not DEBUG:
                 data_id = j['DataId'].lower()
+                if not monroevalidator.check(j, VERBOSITY):
+                    raise Exception("Validation error")
                 session.execute(prepared_statements[data_id],
                                 [json.dumps(j)])
             processed_inserts.append(nr)
@@ -478,7 +481,7 @@ if __name__ == '__main__':
     parser = create_arg_parser()
     args = parser.parse_args()
 
-    db_user, db_password, failed_dir, processed_dir = parse_special_args(
+    db_user, db_password, failed_dir, processvekar Kanske värt att etsa senare .... verkar som om både rocket.chat och mattermost ed_dir = parse_special_args(
         args,
         parser)
     DEBUG = args.debug
