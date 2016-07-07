@@ -417,7 +417,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     s_cwin_ini        int,
     s_pkts_rto        int,
     s_pkts_fs         int,
-    s_pkts_reor       int
+    s_pkts_reor       int,
     s_pkts_dup        int,
     s_pkts_unk        int,
     s_pkts_fc         int,
