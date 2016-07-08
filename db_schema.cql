@@ -426,7 +426,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     s_syn_retx        int,
     http_req_cnt      int,
     http_res_cnt      int,
-    http_res          int,
+    http_res          text,
     c_pkts_push       int,
     s_pkts_push       int,
     c_tls_SNI         text,
