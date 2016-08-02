@@ -279,7 +279,7 @@ CREATE TABLE monroe_exp_tstat_udp (
     s_bytes_all int,
     s_pkts_all  int,
     s_isint     int,
-    s_iscrypto  int
+    s_iscrypto  int,
     s_type      int,
 
     fqdn        text,
