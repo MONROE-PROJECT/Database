@@ -29,6 +29,7 @@ import syslog
 from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
 import monroevalidator
+import bz2
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
@@ -111,11 +112,19 @@ def handle_file(filename,
 
         json_store = []
         # Read and parse file
+        fname, fextension = os.path.splitext(filename)
+        if filename.lower().endswith('.bz2'):
+            with bz2.BZ2File(filename, 'rb') as f:
+                json_store.extend(parse_json(f))
+        elif filename.lower().endswith('.json'):
+            with open(filename, 'r') as f:
+                json_store.extend(parse_json(f))
+        else:
+            raise Exception("Unknown fileformat {}".format(fextension))
         with open(filename, 'r') as f:
             json_store.extend(parse_json(f))
 
         nr_jsons = len(json_store)
-        fname, fextension = os.path.splitext(filename)
         dest_path = fname + ".wip"
         if not DEBUG:
             os.rename(filename, dest_path)
@@ -160,7 +169,7 @@ def handle_file(filename,
         dest_path = construct_filepath(filename,
                                        processed_dir,
                                        "",
-                                       ".json")
+                                       fextension)
         log_str = ("Succeded {} insert(s) (all) from file {} "
                    "moving to {}").format(nr_jsons,
                                           filename,
@@ -176,7 +185,7 @@ def handle_file(filename,
         dest_path = construct_filepath(filename,
                                        failed_dir,
                                        "",
-                                       ".json")
+                                       fextension)
 
         log_str = ("Failed {} (all) insert(s) in file {} "
                    "moving to {}; ").format(nr_jsons,
@@ -291,6 +300,8 @@ def schedule_workers(in_dir,
 
     DEMO_WORKAROUND = True
     if (DEMO_WORKAROUND):
+        for e in results:
+            print e
         insert_count = 0
         failed_count = 0
         failed_parse_files_count = 0
