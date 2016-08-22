@@ -121,8 +121,6 @@ def handle_file(filename,
                 json_store.extend(parse_json(f))
         else:
             raise Exception("Unknown fileformat {}".format(fextension))
-        with open(filename, 'r') as f:
-            json_store.extend(parse_json(f))
 
         nr_jsons = len(json_store)
         dest_path = fname + ".wip"
