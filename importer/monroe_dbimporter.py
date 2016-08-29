@@ -490,7 +490,7 @@ if __name__ == '__main__':
     parser = create_arg_parser()
     args = parser.parse_args()
 
-    db_user, db_password, failed_dir, processvekar Kanske värt att etsa senare .... verkar som om både rocket.chat och mattermost ed_dir = parse_special_args(
+    db_user, db_password, failed_dir, processed_dir = parse_special_args(
         args,
         parser)
     DEBUG = args.debug
