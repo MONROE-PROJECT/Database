@@ -57,7 +57,7 @@ def _check_ping(entry, VERBOSITY):
         return (entry['SequenceNumber'] >= 0 and
                 entry['Rtt'] > 0 and
                 entry['Bytes'] > 0 and
-                entry['TimeStamp'] > 0)
+                entry['Timestamp'] > 0)
     except Exception as error:
         if VERBOSITY > 1:
             print "Missing value in entry {}".format(error)

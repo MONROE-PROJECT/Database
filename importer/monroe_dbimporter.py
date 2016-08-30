@@ -292,14 +292,14 @@ def schedule_workers(in_dir,
 
     pool.close()
     pool.join()
-    # TODO: FIX This bug :
+
+    # WORKAROUND:
     # File "monroe_dbimporter.py", line 281, in schedule_workers
     # results = [async_result.get() for async_result in async_results]
     # File "/usr/lib/python2.7/multiprocessing/pool.py", line 567, in get
     # raise self._value
     # The bug seams to only trigger when "parts of a file is faulty"
-    # Workaround disable ouput for now
-
+    # Workaround disable ouput if there is an exception
     try:
         results = [async_result.get() for async_result in async_results]
         # Parse errors generate inserts = -1, failed = 0
@@ -309,8 +309,8 @@ def schedule_workers(in_dir,
         failed_insert_files_count = len([e for e in results
                                         if (e['inserts'] >= 0 and
                                             e['inserts'] < e['failed'])])
-    except Exception as e:
-        print "Error in parsing return values {}".format(e)
+    except Exception as error:
+        print "Error in parsing return values {}".format(error)
         for e in results:
             print e
 
@@ -402,8 +402,8 @@ def create_arg_parser():
         prog=CMD_NAME,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=textwrap.dedent('''
-            Parses .json files in in_dir and inserts them into Cassandra
-            Cluster specified in -H/--hosts.
+            Parses .json or (.xz) files in in_dir and inserts them into the
+            Cassandra Cluster specified in -H/--hosts.
             All directories not existing will be created.'''))
     parser.add_argument('-u', '--user',
                         help="Cassandra username")
