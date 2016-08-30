@@ -114,7 +114,10 @@ def handle_file(filename,
         # Read and parse file
         fname, fextension = os.path.splitext(filename)
         if fextension.endswith('.xz'):
-            with lzma.LZMAFile(filename, 'r') as f:
+            # BUG woraround : http://tinyurl.com/znopgwy
+            xz = lzma.LZMAFile(filename, 'r')
+            dir(xz)
+            with xz as f:
                 json_store.extend(parse_json(f))
         elif fextension.endswith('.json'):
             with open(filename, 'r') as f:
@@ -275,16 +278,17 @@ def schedule_workers(in_dir,
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
     for root, dirs, files in os.walk(in_dir):
-        for filename in fnmatch.filter(files, '*.json'):
-            path = os.path.join(root, filename)
-            file_count += 1
-            result = pool.apply_async(handle_file,
-                                      (path,
-                                       dest_dir_failed,
-                                       dest_dir_processed,
-                                       session,
-                                       prepared_statements,))
-            async_results.append(result)
+        for extension in ('*.json', '*.xz'):
+            for filename in fnmatch.filter(files, extension):
+                path = os.path.join(root, filename)
+                file_count += 1
+                result = pool.apply_async(handle_file,
+                                          (path,
+                                           dest_dir_failed,
+                                           dest_dir_processed,
+                                           session,
+                                           prepared_statements,))
+                async_results.append(result)
 
     pool.close()
     pool.join()
@@ -309,12 +313,12 @@ def schedule_workers(in_dir,
         print "Error in parsing return values {}".format(e)
         for e in results:
             print e
-        
+
         insert_count = 0
         failed_count = 0
         failed_parse_files_count = 0
         failed_insert_files_count = 0
-        
+
     # Remove empty dirs
     try:
         # Will only succed if the directory is empty
