@@ -29,7 +29,7 @@ import syslog
 from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
 import monroevalidator
-import bz2
+import lzma
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
@@ -113,10 +113,10 @@ def handle_file(filename,
         json_store = []
         # Read and parse file
         fname, fextension = os.path.splitext(filename)
-        if filename.lower().endswith('.bz2'):
-            with bz2.BZ2File(filename, 'rb') as f:
+        if fextension.endswith('.xz'):
+            with lzma.LZMAFile(filename, 'r') as f:
                 json_store.extend(parse_json(f))
-        elif filename.lower().endswith('.json'):
+        elif fextension.endswith('.json'):
             with open(filename, 'r') as f:
                 json_store.extend(parse_json(f))
         else:
@@ -296,15 +296,7 @@ def schedule_workers(in_dir,
     # The bug seams to only trigger when "parts of a file is faulty"
     # Workaround disable ouput for now
 
-    DEMO_WORKAROUND = True
-    if (DEMO_WORKAROUND):
-        for e in results:
-            print e
-        insert_count = 0
-        failed_count = 0
-        failed_parse_files_count = 0
-        failed_insert_files_count = 0
-    else:
+    try:
         results = [async_result.get() for async_result in async_results]
         # Parse errors generate inserts = -1, failed = 0
         insert_count = sum([e['inserts'] for e in results if e['inserts'] > 0])
@@ -313,6 +305,16 @@ def schedule_workers(in_dir,
         failed_insert_files_count = len([e for e in results
                                         if (e['inserts'] >= 0 and
                                             e['inserts'] < e['failed'])])
+    except Exception as e:
+        print "Error in parsing return values {}".format(e)
+        for e in results:
+            print e
+        
+        insert_count = 0
+        failed_count = 0
+        failed_parse_files_count = 0
+        failed_insert_files_count = 0
+        
     # Remove empty dirs
     try:
         # Will only succed if the directory is empty
