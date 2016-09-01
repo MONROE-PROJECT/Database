@@ -260,7 +260,7 @@ CREATE TABLE monroe_exp_http_download (
 CREATE TABLE monroe_exp_tstat_udp (
     NodeId      text,
     Iccid       text,
-    DataId	text,
+    DataId      text,
 
     /* We decided to mantain the same formalism of the tstat/mPlane project */
     c_ip        text,
