@@ -257,7 +257,7 @@ CREATE TABLE monroe_exp_http_download (
     PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
 
-CREATE TABLE monroe_exp_tstat_udp (
+CREATE TABLE monroe_exp_tstat_udp_complete (
     NodeId      text,
     Iccid       text,
     DataId      text,
@@ -288,7 +288,7 @@ CREATE TABLE monroe_exp_tstat_udp (
     PRIMARY KEY ((NodeId, Iccid), c_first_abs, c_ip, c_port, s_ip, s_port)
 );
 
-CREATE TABLE monroe_exp_tstat_http (
+CREATE TABLE monroe_exp_tstat_http_complete (
     NodeId            text,
     Iccid             text,
     DataId	      text,
