@@ -257,6 +257,7 @@ CREATE TABLE monroe_exp_http_download (
     PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
 
+///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_tstat_udp_complete (
     NodeId      text,
     Iccid       text,
@@ -288,6 +289,7 @@ CREATE TABLE monroe_exp_tstat_udp_complete (
     PRIMARY KEY ((NodeId, Iccid), c_first_abs, c_ip, c_port, s_ip, s_port)
 );
 
+///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_tstat_http_complete (
     NodeId            text,
     Iccid             text,
@@ -311,6 +313,7 @@ CREATE TABLE monroe_exp_tstat_http_complete (
     PRIMARY KEY ((NodeId, Iccid), time_abs, c_ip, c_port, s_ip, s_port)
 );
 
+///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_tstat_tcp_complete (
     NodeId            text,
     Iccid             text,
@@ -451,6 +454,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     PRIMARY KEY ((NodeId, Iccid), first, last, c_ip, c_port, s_ip, s_port)
 );
 
+///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
     NodeId       text,
     Iccid        text,
@@ -504,3 +508,32 @@ CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
 
     PRIMARY KEY ((NodeId, Iccid), first, last, c_ip, c_port, s_ip, s_port)
 );
+
+///////////////////////////////////////////////////////////////////////////////
+CREATE TABLE monroe_exp_simple_traceroute (
+    NodeId            int,
+    startTime         int,
+    endTime           int,
+    DataId            text,
+    DataVersion       int,
+    
+    hop               int,
+    targetdomainname  text,
+    InterfaceName     text,
+    mobileOperator    text,
+    CarrierInternalIP text,
+    DeviceMode        int,
+    DeviceState       int,
+    NameDst           text,
+    IpDst             text,
+    numberOfHops      int,
+    sizeOfProbes      int,
+    IP                text,
+    HopName           text,
+    hopInfo           list<frozen <list<int>> >, /* [ [hopRtt_0 in ms, explanationCode_0], [hopRtt_1 in ms, explanationCode_1] ] */
+
+    PRIMARY KEY (NodeId, InterfaceName, targetdomainname, startTime, IpDst, hop, IP)
+);
+
+CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_startTime on monroe_exp_simple_traceroute(startTime) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
+CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_targetdomainname on monroe_exp_simple_traceroute(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
