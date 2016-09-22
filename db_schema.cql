@@ -512,7 +512,7 @@ CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_simple_traceroute (
     NodeId            int,
-    startTime         int,
+    timestamp         int,
     endTime           int,
     DataId            text,
     DataVersion       int,
@@ -520,20 +520,18 @@ CREATE TABLE monroe_exp_simple_traceroute (
     hop               int,
     targetdomainname  text,
     InterfaceName     text,
-    mobileOperator    text,
     CarrierInternalIP text,
-    DeviceMode        int,
-    DeviceState       int,
     NameDst           text,
     IpDst             text,
     numberOfHops      int,
     sizeOfProbes      int,
     IP                text,
     HopName           text,
-    hopInfo           list<frozen <list<int>> >, /* [ [hopRtt_0 in ms, explanationCode_0], [hopRtt_1 in ms, explanationCode_1] ] */
+    hopRTT            list<int>, /* in ms */
+    hopAnnotations    list<int>,
 
-    PRIMARY KEY (NodeId, InterfaceName, targetdomainname, startTime, IpDst, hop, IP)
+    PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
 );
 
-CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_startTime on monroe_exp_simple_traceroute(startTime) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
+CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_timestamp on monroe_exp_simple_traceroute(timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_targetdomainname on monroe_exp_simple_traceroute(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
