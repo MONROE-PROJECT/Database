@@ -58,6 +58,10 @@ def parse_json(f):
         # (ie do not modify original faulty file)
         # FIXME: If it becomes a performance problem
 
+        # Skip empty lines, ie only whitespace
+        if not line.strip():
+            continue
+
         each_json_on_single_line = True
         while True:
             # Try to build JSON (will fail if the object is not complete)
@@ -256,7 +260,8 @@ def schedule_workers(in_dir,
                      processed_dir,
                      concurrency,
                      session,
-                     prepared_statements):
+                     prepared_statements,
+                     recursive):
     """Traverse the directory tree and kick off workers to handle the files."""
     file_count = 0
     pool = ThreadPool(processes=concurrency)
@@ -277,7 +282,9 @@ def schedule_workers(in_dir,
 
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
-    for root, dirs, files in os.walk(in_dir):
+    for root, dirs, files in os.walk(in_dir, topdown=True):
+        if not recursive:
+            dirs[:] = d[0]
         for extension in ('*.json', '*.xz'):
             for filename in fnmatch.filter(files, extension):
                 path = os.path.join(root, filename)
@@ -357,7 +364,8 @@ def parse_files(session,
                 failed_dir,
                 processed_dir,
                 concurrency,
-                prepared_statements):
+                prepared_statements,
+                recursive):
     """Scan in_dir for files."""
     while True:
         start_time = time.time()
@@ -372,7 +380,8 @@ def parse_files(session,
                                                 processed_dir,
                                                 concurrency,
                                                 session,
-                                                prepared_statements)
+                                                prepared_statements,
+                                                recursive)
 
         # Calculate time we should wait to satisfy the interval requirement
         elapsed = time.time() - start_time
@@ -460,6 +469,9 @@ def create_arg_parser():
                         default="/experiments/processed",
                         help=("Processed files files (default "
                               "/experiments/processed(-$DATE))"))
+    parser.add_argument('-r', '--recursive',
+                        action="store_true",
+                        help="recurse into subdirectries")
     parser.add_argument('--debug',
                         action="store_true",
                         help="Do not execute queries or move files")
@@ -543,6 +555,7 @@ if __name__ == '__main__':
               "Info and Statements are printed to stdout\n"
               "{} called with variables \nuser={} \npassword={} \nhost={} "
               "\nkeyspace={} \nindir={} \nfaileddir={} \nprocessedir={} "
+              "\nrecursive={} "
               "\ninterval={} \nConcurrency={}\n").format(CMD_NAME,
                                                          db_user,
                                                          db_password,
@@ -551,6 +564,7 @@ if __name__ == '__main__':
                                                          args.indir,
                                                          failed_dir,
                                                          processed_dir,
+                                                         args.recursive,
                                                          args.interval,
                                                          args.concurrency)
 
@@ -560,7 +574,8 @@ if __name__ == '__main__':
                 failed_dir,
                 processed_dir,
                 args.concurrency,
-                prepared_statements)
+                prepared_statements
+                args.recursive)
 
     if not DEBUG:
         cluster.shutdown()
