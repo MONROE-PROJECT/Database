@@ -29,6 +29,7 @@ import syslog
 from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
 import monroevalidator
+import lzma
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
@@ -56,6 +57,10 @@ def parse_json(f):
         # RATIONALE: To ease debug/eror tracking
         # (ie do not modify original faulty file)
         # FIXME: If it becomes a performance problem
+
+        # Skip empty lines, ie only whitespace
+        if not line.strip():
+            continue
 
         each_json_on_single_line = True
         while True:
@@ -111,11 +116,20 @@ def handle_file(filename,
 
         json_store = []
         # Read and parse file
-        with open(filename, 'r') as f:
-            json_store.extend(parse_json(f))
+        fname, fextension = os.path.splitext(filename)
+        if fextension.endswith('.xz'):
+            # BUG woraround : http://tinyurl.com/znopgwy
+            xz = lzma.LZMAFile(filename, 'r')
+            dir(xz)
+            with xz as f:
+                json_store.extend(parse_json(f))
+        elif fextension.endswith('.json'):
+            with open(filename, 'r') as f:
+                json_store.extend(parse_json(f))
+        else:
+            raise Exception("Unknown fileformat {}".format(fextension))
 
         nr_jsons = len(json_store)
-        fname, fextension = os.path.splitext(filename)
         dest_path = fname + ".wip"
         if not DEBUG:
             os.rename(filename, dest_path)
@@ -160,7 +174,7 @@ def handle_file(filename,
         dest_path = construct_filepath(filename,
                                        processed_dir,
                                        "",
-                                       ".json")
+                                       fextension)
         log_str = ("Succeded {} insert(s) (all) from file {} "
                    "moving to {}").format(nr_jsons,
                                           filename,
@@ -176,7 +190,7 @@ def handle_file(filename,
         dest_path = construct_filepath(filename,
                                        failed_dir,
                                        "",
-                                       ".json")
+                                       fextension)
 
         log_str = ("Failed {} (all) insert(s) in file {} "
                    "moving to {}; ").format(nr_jsons,
@@ -246,7 +260,8 @@ def schedule_workers(in_dir,
                      processed_dir,
                      concurrency,
                      session,
-                     prepared_statements):
+                     prepared_statements,
+                     recursive):
     """Traverse the directory tree and kick off workers to handle the files."""
     file_count = 0
     pool = ThreadPool(processes=concurrency)
@@ -267,43 +282,61 @@ def schedule_workers(in_dir,
 
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
-    for root, dirs, files in os.walk(in_dir):
-        for filename in fnmatch.filter(files, '*.json'):
-            path = os.path.join(root, filename)
-            file_count += 1
-            result = pool.apply_async(handle_file,
-                                      (path,
-                                       dest_dir_failed,
-                                       dest_dir_processed,
-                                       session,
-                                       prepared_statements,))
-            async_results.append(result)
+    for root, dirs, files in os.walk(in_dir, topdown=True):
+        if not recursive and len(dirs) > 0:
+            dirs[:] = dirs[0]
+        for extension in ('*.json', '*.xz'):
+            for filename in fnmatch.filter(files, extension):
+                path = os.path.join(root, filename)
+                file_count += 1
+                result = pool.apply_async(handle_file,
+                                          (path,
+                                           dest_dir_failed,
+                                           dest_dir_processed,
+                                           session,
+                                           prepared_statements,))
+                async_results.append(result)
 
     pool.close()
     pool.join()
-    # TODO: FIX This bug :
+
+    # WORKAROUND:
     # File "monroe_dbimporter.py", line 281, in schedule_workers
     # results = [async_result.get() for async_result in async_results]
     # File "/usr/lib/python2.7/multiprocessing/pool.py", line 567, in get
     # raise self._value
     # The bug seams to only trigger when "parts of a file is faulty"
-    # Workaround disable ouput for now
+    # Workaround disable ouput if there is an exception
+    results = None
+    try:
+        results = [async_result.get() for async_result in async_results]
+        # Parse errors generate inserts = -1, failed = 0
+    except Exception as error:
+        print "Error in reading return values {}".format(error)
 
-    DEMO_WORKAROUND = True
-    if (DEMO_WORKAROUND):
+    if results is None:
         insert_count = 0
         failed_count = 0
         failed_parse_files_count = 0
         failed_insert_files_count = 0
     else:
-        results = [async_result.get() for async_result in async_results]
-        # Parse errors generate inserts = -1, failed = 0
-        insert_count = sum([e['inserts'] for e in results if e['inserts'] > 0])
-        failed_count = sum([e['failed'] for e in results])
-        failed_parse_files_count = len([e for e in results if e['inserts'] < 0])
-        failed_insert_files_count = len([e for e in results
-                                        if (e['inserts'] >= 0 and
-                                            e['inserts'] < e['failed'])])
+        try:
+            insert_count = sum([e['inserts'] for e in results if e['inserts'] > 0])
+            failed_count = sum([e['failed'] for e in results])
+            failed_parse_files_count = len([e for e in results if e['inserts'] < 0])
+            failed_insert_files_count = len([e for e in results
+                                            if (e['inserts'] >= 0 and
+                                                e['inserts'] < e['failed'])])
+        except Exception as error:
+            print "Error in parsing return values {}".format(error)
+            for e in results:
+                print e
+
+            insert_count = 0
+            failed_count = 0
+            failed_parse_files_count = 0
+            failed_insert_files_count = 0
+
     # Remove empty dirs
     try:
         # Will only succed if the directory is empty
@@ -331,7 +364,8 @@ def parse_files(session,
                 failed_dir,
                 processed_dir,
                 concurrency,
-                prepared_statements):
+                prepared_statements,
+                recursive):
     """Scan in_dir for files."""
     while True:
         start_time = time.time()
@@ -346,7 +380,8 @@ def parse_files(session,
                                                 processed_dir,
                                                 concurrency,
                                                 session,
-                                                prepared_statements)
+                                                prepared_statements,
+                                                recursive)
 
         # Calculate time we should wait to satisfy the interval requirement
         elapsed = time.time() - start_time
@@ -387,8 +422,8 @@ def create_arg_parser():
         prog=CMD_NAME,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=textwrap.dedent('''
-            Parses .json files in in_dir and inserts them into Cassandra
-            Cluster specified in -H/--hosts.
+            Parses .json or (.xz) files in in_dir and inserts them into the
+            Cassandra Cluster specified in -H/--hosts.
             All directories not existing will be created.'''))
     parser.add_argument('-u', '--user',
                         help="Cassandra username")
@@ -434,6 +469,9 @@ def create_arg_parser():
                         default="/experiments/processed",
                         help=("Processed files files (default "
                               "/experiments/processed(-$DATE))"))
+    parser.add_argument('-r', '--recursive',
+                        action="store_true",
+                        help="recurse into subdirectries")
     parser.add_argument('--debug',
                         action="store_true",
                         help="Do not execute queries or move files")
@@ -517,6 +555,7 @@ if __name__ == '__main__':
               "Info and Statements are printed to stdout\n"
               "{} called with variables \nuser={} \npassword={} \nhost={} "
               "\nkeyspace={} \nindir={} \nfaileddir={} \nprocessedir={} "
+              "\nrecursive={} "
               "\ninterval={} \nConcurrency={}\n").format(CMD_NAME,
                                                          db_user,
                                                          db_password,
@@ -525,6 +564,7 @@ if __name__ == '__main__':
                                                          args.indir,
                                                          failed_dir,
                                                          processed_dir,
+                                                         args.recursive,
                                                          args.interval,
                                                          args.concurrency)
 
@@ -534,7 +574,8 @@ if __name__ == '__main__':
                 failed_dir,
                 processed_dir,
                 args.concurrency,
-                prepared_statements)
+                prepared_statements,
+                args.recursive)
 
     if not DEBUG:
         cluster.shutdown()
