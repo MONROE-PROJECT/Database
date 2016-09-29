@@ -283,8 +283,8 @@ def schedule_workers(in_dir,
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
     for root, dirs, files in os.walk(in_dir, topdown=True):
-        if not recursive:
-            dirs[:] = d[0]
+        if not recursive and len(dirs) > 0:
+            dirs[:] = dirs[0]
         for extension in ('*.json', '*.xz'):
             for filename in fnmatch.filter(files, extension):
                 path = os.path.join(root, filename)
@@ -574,7 +574,7 @@ if __name__ == '__main__':
                 failed_dir,
                 processed_dir,
                 args.concurrency,
-                prepared_statements
+                prepared_statements,
                 args.recursive)
 
     if not DEBUG:
