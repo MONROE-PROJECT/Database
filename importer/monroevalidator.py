@@ -24,31 +24,15 @@ it is the dbs responsibility to ensure that necessary keys exist in the table
 and that the table exist).
 """
 
-
-def check(entry, VERBOSITY):
-    """
-    Validate so the keys/values are reasonable.
-    Returns (True, None)/(False, "Error message")
-    """
-    err_msg = None
-    dataid = entry.get('DataId', None)
-
-    # Try to call validator function
-    if dataid is None:
-        # This should never happen
-        if VERBOSITY > 1:
-            print "Input validation failed due to missing DataId"
-        return False
-    elif dataid == 'MONROE.EXP.PING':
-        return _check_ping(entry, VERBOSITY)
-    else:
-        if VERBOSITY > 1:
-            print ("Did not exist a validity test for DataId : {}"
-                   " -> silently accept").format(dataid)
-        return True
-
-
 # User defined checks should not be called directly
+# Return value: True or "Error message"
+
+def _default_accept(entry, VERBOSITY):
+    if VERBOSITY > 1:
+        print ("No validity test for DataId : {}"
+               " -> silently accept").format(dataid)
+    return True
+
 def _check_ping(entry, VERBOSITY):
     """
     Do some simple checks on the ping container so the values are reasonable.
@@ -57,8 +41,25 @@ def _check_ping(entry, VERBOSITY):
         return (entry['SequenceNumber'] >= 0 and
                 entry['Rtt'] > 0 and
                 entry['Bytes'] > 0 and
-                entry['Timestamp'] > 0)
+                entry['TimeStamp'] > 0) or "Value error."
     except Exception as error:
-        if VERBOSITY > 1:
-            print "Missing value in entry {}".format(error)
-        return False
+        return "Missing value in entry {}".format(error)
+
+checks = {
+  'MONROE.EXP.PING': _check_ping,
+}
+
+def check(entry, VERBOSITY):
+    """
+    Validate so the keys/values are reasonable.
+    Returns (True/False, True/"Error message")
+    """
+    dataid = entry.get('DataId')
+    if dataid is not None:
+        result = checks.get(dataid, _default_accept)(entry, VERBOSITY);
+    else:
+        result = "Input validation failed due to missing DataId"
+    if VERBOSITY > 1 and result is not True:
+        print result
+    return result is True, result
+
