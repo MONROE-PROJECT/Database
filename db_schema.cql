@@ -562,6 +562,7 @@ CREATE TABLE monroe_exp_exhaustive_paris (
     StdHopRTT         int,
     annotation        int,
     flowIds           list<int>,
+    MPLS              text,
 
     PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
 );
