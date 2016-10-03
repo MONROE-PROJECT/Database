@@ -535,3 +535,37 @@ CREATE TABLE monroe_exp_simple_traceroute (
 
 CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_timestamp on monroe_exp_simple_traceroute(timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_targetdomainname on monroe_exp_simple_traceroute(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
+
+///////////////////////////////////////////////////////////////////////////////
+CREATE TABLE monroe_exp_exhaustive_paris (
+    NodeId            int,
+    timestamp         int,
+    endTime           int,
+    DataId            text,
+    DataVersion       int,
+
+    hop               int,
+    targetdomainname  text,
+    InterfaceName     text,
+    IpDst             text,
+    PortDst           int,
+    IpSrc             text,
+    PortSrc           int,
+    IP                text,
+    Proto             text,
+    Algorithm         text,
+
+    duration          int,
+    MinHopRTT         int,
+    MedianHopRTT      int,
+    MaxHopRTT         int,
+    StdHopRTT         int,
+    annotation        int,
+    flowIds           list<int>,
+
+    PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
+);
+
+CREATE CUSTOM INDEX i_monroe_exp_exhaustive_paris_timestamp on monroe_exp_exhaustive_paris(timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
+CREATE CUSTOM INDEX i_monroe_exp_exhaustive_paris_targetdomainname on monroe_exp_exhaustive_paris(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
+
