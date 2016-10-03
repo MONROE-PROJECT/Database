@@ -167,7 +167,7 @@ def handle_file(filename,
             processed_inserts.append(nr)
 
         except Exception as error:
-            failed_inserts.append((nr, error))
+            failed_inserts.append((nr, str(error)))
 
     # If all is ok move file as-is to processed (low-cost)
     if len(failed_inserts) == 0:
@@ -209,14 +209,15 @@ def handle_file(filename,
     # and rest to processed dir (high-cost)
     else:
         # 0 = nr failed, 1 = error message
-        nr_failed = [e[0] for e in failed_inserts]
+        nr_failed = [str(e[0]) for e in failed_inserts]
         middlefix_failed = "_{}".format("-".join(nr_failed))
         dest_path_failed = construct_filepath(filename,
                                               failed_dir,
                                               middlefix_failed,
                                               ".json")
 
-        middlefix_processed = "_{}".format("-".join(processed_inserts))
+        nr_processed = [str(e) for e in processed_inserts]
+        middlefix_processed = "_{}".format("-".join(nr_processed))
         dest_path_processed = construct_filepath(filename,
                                                  processed_dir,
                                                  middlefix_processed,

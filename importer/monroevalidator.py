@@ -27,11 +27,13 @@ and that the table exist).
 # User defined checks should not be called directly
 # Return value: True or "Error message"
 
+
 def _default_accept(entry, VERBOSITY):
     if VERBOSITY > 1:
         print ("No validity test for DataId : {}"
-               " -> silently accept").format(dataid)
+               " -> silently accept").format(entry.get('DataId'))
     return True
+
 
 def _check_ping(entry, VERBOSITY):
     """
@@ -49,6 +51,7 @@ checks = {
   'MONROE.EXP.PING': _check_ping,
 }
 
+
 def check(entry, VERBOSITY):
     """
     Validate so the keys/values are reasonable.
@@ -56,10 +59,9 @@ def check(entry, VERBOSITY):
     """
     dataid = entry.get('DataId')
     if dataid is not None:
-        result = checks.get(dataid, _default_accept)(entry, VERBOSITY);
+        result = checks.get(dataid, _default_accept)(entry, VERBOSITY)
     else:
         result = "Input validation failed due to missing DataId"
     if VERBOSITY > 1 and result is not True:
         print result
     return result is True, result
-
