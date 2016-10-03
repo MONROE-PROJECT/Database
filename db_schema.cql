@@ -527,8 +527,8 @@ CREATE TABLE monroe_exp_simple_traceroute (
     sizeOfProbes      int,
     IP                text,
     HopName           text,
-    hopRTT            list<int>, /* in ms */
-    hopAnnotations    list<int>,
+    RTTSection        list<int>, /* in ms */
+    annotationSection list<int>,
 
     PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
 );
