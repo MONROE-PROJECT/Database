@@ -62,7 +62,7 @@ CREATE TABLE monroe_exp_ping (
 
     PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
-/*CREATE CUSTOM INDEX i_monroe_exp_ping_timestamp on monroe_exp_ping(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
+CREATE CUSTOM INDEX i_monroe_exp_ping_timestamp on monroe_exp_ping(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_meta_device_modem (
@@ -521,7 +521,6 @@ CREATE TABLE monroe_exp_simple_traceroute (
     targetdomainname  text,
     InterfaceName     text,
     CarrierInternalIP text,
-    NameDst           text,
     IpDst             text,
     numberOfHops      int,
     sizeOfProbes      int,
@@ -563,6 +562,8 @@ CREATE TABLE monroe_exp_exhaustive_paris (
     annotation        int,
     flowIds           list<int>,
     MPLS              text,
+    TransmittedProbes int,
+    SuccessfulProbes  int,
 
     PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
 );
