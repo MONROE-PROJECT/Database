@@ -206,7 +206,7 @@ CREATE TABLE monroe_meta_node_event (
     //SystemHalt         int,
     //SchedulingStarted  int,
 
-    PRIMARY KEY (NodeId, SequenceNumber, Timestamp)
+    PRIMARY KEY (NodeId, Timestamp, SequenceNumber)
 );
 /*CREATE CUSTOM INDEX i_monroe_meta_node_event_timestamp on monroe_meta_node_event(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
 
