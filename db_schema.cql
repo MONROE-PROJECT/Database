@@ -521,7 +521,6 @@ CREATE TABLE monroe_exp_simple_traceroute (
     hop                int,
     targetdomainname   text,
     InterfaceName      text,
-    CarrierInternalIP  text,
     IpDst              text,
     numberOfHops       int,
     sizeOfProbes       int,
