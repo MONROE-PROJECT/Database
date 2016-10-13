@@ -254,7 +254,7 @@ CREATE TABLE monroe_exp_http_download (
     Speed          double,
     Port           text,
 
-    PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
+    PRIMARY KEY (NodeId, Iccid, Timestamp, SequenceNumber)
 );
 
 ///////////////////////////////////////////////////////////////////////////////
