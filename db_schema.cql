@@ -62,7 +62,7 @@ CREATE TABLE monroe_exp_ping (
 
     PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
-/*CREATE CUSTOM INDEX i_monroe_exp_ping_timestamp on monroe_exp_ping(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
+CREATE CUSTOM INDEX i_monroe_exp_ping_timestamp on monroe_exp_ping(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_meta_device_modem (
@@ -206,7 +206,7 @@ CREATE TABLE monroe_meta_node_event (
     //SystemHalt         int,
     //SchedulingStarted  int,
 
-    PRIMARY KEY (NodeId, SequenceNumber, Timestamp)
+    PRIMARY KEY (NodeId, Timestamp, SequenceNumber)
 );
 /*CREATE CUSTOM INDEX i_monroe_meta_node_event_timestamp on monroe_meta_node_event(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
 
@@ -266,7 +266,7 @@ CREATE TABLE monroe_exp_tstat_udp_complete (
     /* We decided to mantain the same formalism of the tstat/mPlane project */
     c_ip        text,
     c_port      int,
-    c_first_abs decimal,
+    c_first_abs decimal,    /* Timestamp, in milliseconds (e.g., 1470123456000.47) */
     c_durat     decimal,
     c_bytes_all int,
     c_pkts_all  int,
@@ -300,7 +300,7 @@ CREATE TABLE monroe_exp_tstat_http_complete (
     c_port            int,
     s_ip              text,
     s_port            int,
-    time_abs          decimal,
+    time_abs          decimal,    /* Timestamp, in seconds (e.g., 1470123456.47) */
     method_HTTP       text,
     hostname_response text,
     fqdn_content_len  text,
@@ -348,7 +348,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     s_pkts_ooo        int,
     s_syn_cnt         int,
     s_fin_cnt         int,
-    first             decimal,
+    first             decimal,    /* Timestamp, in milliseconds (e.g., 1470123456000.47) */
     last              decimal,
     durat             decimal,
     c_first           decimal,
@@ -489,15 +489,15 @@ CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
     s_pkts_ooo   int,
     s_syn_cnt    int,
     s_fin_cnt    int,
-    first        decimal,
+    first        decimal,    /* Timestamp, in milliseconds (e.g., 1470123456000.47) */
     last         decimal,
     durat        decimal,
-    c_first      int,
-    s_first      int,
-    c_last       int,
-    s_last       int,
-    c_first_ack  int,
-    s_first_ack  int,
+    c_first      decimal,
+    s_first      decimal,
+    c_last       decimal,
+    s_last       decimal,
+    c_first_ack  decimal,
+    s_first_ack  decimal,
     c_isint      int,
     s_isint      int,
     c_iscrypto   int,
@@ -511,27 +511,64 @@ CREATE TABLE monroe_exp_tstat_tcp_nocomplete (
 
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_simple_traceroute (
-    NodeId            int,
-    timestamp         int,
-    endTime           int,
-    DataId            text,
-    DataVersion       int,
+    NodeId             int,
+    timestamp          int,
+    endTime            int,
+    DataId             text,
+    DataVersion        int,
+    containerTimestamp int,
     
-    hop               int,
-    targetdomainname  text,
-    InterfaceName     text,
-    CarrierInternalIP text,
-    NameDst           text,
-    IpDst             text,
-    numberOfHops      int,
-    sizeOfProbes      int,
-    IP                text,
-    HopName           text,
-    hopRTT            list<int>, /* in ms */
-    hopAnnotations    list<int>,
+    hop                int,
+    targetdomainname   text,
+    InterfaceName      text,
+    IpDst              text,
+    numberOfHops       int,
+    sizeOfProbes       int,
+    IP                 text,
+    HopName            text,
+    RTTSection         list<int>, /* in ms */
+    annotationSection  list<int>,
 
     PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
 );
 
 CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_timestamp on monroe_exp_simple_traceroute(timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 CREATE CUSTOM INDEX i_monroe_exp_simple_traceroute_targetdomainname on monroe_exp_simple_traceroute(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
+
+///////////////////////////////////////////////////////////////////////////////
+CREATE TABLE monroe_exp_exhaustive_paris (
+    NodeId             int,
+    timestamp          int,
+    endTime            int,
+    DataId             text,
+    DataVersion        int,
+    containerTimestamp int,
+
+    hop                int,
+    targetdomainname   text,
+    InterfaceName      text,
+    IpDst              text,
+    PortDst            int,
+    IpSrc              text,
+    PortSrc            int,
+    IP                 text,
+    Proto              text,
+    Algorithm          text,
+
+    duration           int,
+    MinHopRTT          int,
+    MedianHopRTT       int,
+    MaxHopRTT          int,
+    StdHopRTT          int,
+    annotation         int,
+    flowIds            list<int>,
+    MPLS               text,
+    TransmittedProbes  int,
+    SuccessfulProbes   int,
+
+    PRIMARY KEY (NodeId, InterfaceName, targetdomainname, timestamp, IpDst, hop, IP)
+);
+
+CREATE CUSTOM INDEX i_monroe_exp_exhaustive_paris_timestamp on monroe_exp_exhaustive_paris(timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
+CREATE CUSTOM INDEX i_monroe_exp_exhaustive_paris_targetdomainname on monroe_exp_exhaustive_paris(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
+
