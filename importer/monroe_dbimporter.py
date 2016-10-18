@@ -93,6 +93,7 @@ def construct_filepath(filename, dest_dir, middlefix="", extension=None):
     if (extension is None):
         extension = fextension
     dest_name = "{}{}{}".format(fname, middlefix, extension)
+    dest_name = dest_name.strip()
     return os.path.join(dest_dir, os.path.basename(dest_name))
 
 
@@ -118,11 +119,13 @@ def handle_file(filename,
         # Read and parse file
         fname, fextension = os.path.splitext(filename)
         if fextension.endswith('.xz'):
-            # BUG woraround : http://tinyurl.com/znopgwy
-            xz = lzma.LZMAFile(filename, 'r')
-            dir(xz)
-            with xz as f:
+            # WORKAROUND to avoid BUG in LZMAFile with "with" statement
+            # http://tinyurl.com/znopgwy
+            f = lzma.LZMAFile(filename, 'r')
+            try:
                 json_store.extend(parse_json(f))
+            finally:
+                f.close()
         elif fextension.endswith('.json'):
             with open(filename, 'r') as f:
                 json_store.extend(parse_json(f))
@@ -130,7 +133,7 @@ def handle_file(filename,
             raise Exception("Unknown fileformat {}".format(fextension))
 
         nr_jsons = len(json_store)
-        dest_path = fname + ".wip"
+        dest_path = filename + ".wip"
         if not DEBUG:
             os.rename(filename, dest_path)
 
@@ -174,7 +177,7 @@ def handle_file(filename,
         dest_path = construct_filepath(filename,
                                        processed_dir,
                                        "",
-                                       fextension)
+                                       "")
         log_str = ("Succeded {} insert(s) (all) from file {} "
                    "moving to {}").format(nr_jsons,
                                           filename,
@@ -190,7 +193,7 @@ def handle_file(filename,
         dest_path = construct_filepath(filename,
                                        failed_dir,
                                        "",
-                                       fextension)
+                                       "")
 
         log_str = ("Failed {} (all) insert(s) in file {} "
                    "moving to {}; ").format(nr_jsons,
