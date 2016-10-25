@@ -20,6 +20,7 @@ import argparse
 import textwrap
 import syslog
 
+
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
 from cassandra.query import dict_factory, ordered_dict_factory
@@ -102,6 +103,8 @@ def parse_special_args(args, parser, now):
         span = int(args.timespan)
     return (int(now - span), db_user, db_password)
 
+
+
 if __name__ == '__main__':
     parser = create_arg_parser()
     args = parser.parse_args()
@@ -156,6 +159,7 @@ if __name__ == '__main__':
     GPS = 'monroe_meta_device_gps'
     PING = 'monroe_exp_ping'
     MODEM = 'monroe_meta_device_modem'
+    HTTP = 'monroe_exp_http_download'
     spec_query[PING] = ('SELECT nodeid, '
                         'timestamp, '
                         'operator, '
@@ -163,6 +167,12 @@ if __name__ == '__main__':
                         'from {} '
                         'where timestamp > {} '
                         'ALLOW FILTERING').format(PING, span)
+    spec_query[HTTP] = ('SELECT nodeid, '
+                        'timestamp, '
+                        'operator '
+                        'from {} '
+                        'where timestamp > {} '
+                        'ALLOW FILTERING').format(HTTP, span)
     spec_query[MODEM] = ('SELECT nodeid, '
                          'timestamp, '
                          'operator, '
@@ -201,7 +211,6 @@ if __name__ == '__main__':
             print "Error for table {} : {}".format(table_name, e)
 
     # Specific checks
-    GRACE = 100000
     for table_name, query in spec_query.iteritems():
         try:
             for row in session.execute(query):
@@ -212,76 +221,104 @@ if __name__ == '__main__':
 
                 if table_name == GPS:
                     if table_name not in nodes[nodeid]:
-                        nodes[nodeid][table_name] = {'timestamp': ts}
+                        nodes[nodeid][table_name] = []
 
-                    if abs(nodes[nodeid][table_name]['timestamp'] - ts) < GRACE:
-                        nodes[nodeid][table_name]['timestamp'] = ts
+                    nodes[nodeid][table_name].append(ts)
 
-                if table_name == PING or table_name == MODEM:
-                    iccid = long(row['iccid'])
+                if table_name in [PING, MODEM, HTTP]:
+                    #iccid = long(row['iccid'])
                     op = str(row['operator'])
                     if table_name not in nodes[nodeid]:
                         nodes[nodeid][table_name] = {}
 
-                    if (iccid not in nodes[nodeid][table_name] or
-                        abs(nodes[nodeid][table_name][iccid]['timestamp'] -
-                        ts) < GRACE):
-                        nodes[nodeid][table_name][iccid] = {
-                                                            'operator': op,
-                                                            'timestamp': ts
-                                                            }
+                    if op not in nodes[nodeid][table_name]:
+                        nodes[nodeid][table_name][op] = []
+
+                    nodes[nodeid][table_name][op].append(ts)
 
         except Exception as e:
             print "Error for table {} : {}".format(table_name, e)
 
-    print "| {: <6} | {: <3} | {: <30} | {: <30} |".format('NodeID',
-                                             'GPS',
-                                             'Ping(operator)',
-                                             'Modem(operator)')
-    print "| {:-<6} | {:-<3} | {:-<30} | {:-<30} |".format("", "", "", "")
+    # Sort the timestamps and check for biggest time diff between timestamps
+    for nodeid in nodes:
+        for table_name in nodes[nodeid]:
+            if table_name == GPS:
+                # Sort the timestamps so we can find the biggest difference
+                nodes[nodeid][table_name].sort()
+                ts = nodes[nodeid][table_name]
+                ts.append(now)
+                # Append the time now so we can check so we have recent data
+                diff = [ts[i+1] - ts[i] for i in range(len(ts)-1)]
+                nodes[nodeid][table_name] = max(diff)
+            if table_name in [PING, MODEM, HTTP]:
+                for op in nodes[nodeid][table_name]:
+                    # Sort the timestamps so we can find the biggest difference
+                    nodes[nodeid][table_name][op].sort()
+                    ts = nodes[nodeid][table_name][op]
+                    # Append the time now so we can check so we have recent data
+                    ts.append(now)
+                    diff = [ts[i+1] - ts[i] for i in range(len(ts)-1)]
+                    nodes[nodeid][table_name][op] = max(diff)
 
-
-    nodeline = ""
-
+    print "| {: <6} | {: <15} | {: <50} | {: <50} | {: <50} |".format('NodeID',
+                                                           'GPS',
+                                                           'Ping(operator)',
+                                                           'Modem(operator)',
+                                                           'HTTP(operator)')
+    print "| {:-<6} | {:-<15} | {:-<50} | {:-<50} | {:-<50} |".format("",
+                                                                      "",
+                                                                      "",
+                                                                      "",
+                                                                      "")
+    GRACE = 240
     for node in nodes:
-        gpsstr = "-"
-        if (GPS in nodes[node] and
-            abs(now - nodes[node][GPS]['timestamp']) < GRACE):
-            gpsstr = "X"
+        opstr = {}
+        if GPS in nodes[node]:
+            ok = True
+            if nodes[node][GPS] > GRACE:
+                ok = False
 
-        pingstr = "{} ({})".format(0, "-,-,-")
-        if PING in nodes[node]:
-            operators = []
-            for iccid in nodes[node][PING]:
-                diff = abs(now - nodes[node][PING][iccid]['timestamp'])
-                op = nodes[node][PING][iccid]['operator']
-                if diff < GRACE:
-                    operators.append("{}".format(str(op)))
+            opstr[GPS] = "{} ({})".format(ok, int(nodes[node][GPS]))
+        else:
+            opstr[GPS] = "{} ({})".format(False, "-")
 
-            nrop = len(operators)
-            while len(operators) < 3:
-                operators.append("-")
-            pingstr = "{} ({})".format(nrop, ",".join(operators))
+        for table_name in [PING, MODEM]:
+            if table_name in nodes[node]:
+                operators = []
+                ok = len(nodes[node][table_name]) == 3
+                for op in nodes[node][table_name]:
+                    diff = nodes[node][table_name][op]
+                    operators.append("{}({})".format(op, int(diff)))
+                    if diff > GRACE:
+                        ok = False
 
-        modemstr = "{} ({})".format(0, "-,-,-")
-        if MODEM in nodes[node]:
-            operators = []
-            for iccid in nodes[node][MODEM]:
-                diff = abs(now - nodes[node][MODEM][iccid]['timestamp'])
-                op = nodes[node][MODEM][iccid]['operator']
-                if diff < GRACE:
-                    operators.append("{}".format(str(op)))
+                while len(operators) < 3:
+                    operators.append("-")
 
-            nrop = len(operators)
-            while len(operators) < 3:
-                operators.append("-")
-            modemstr = "{} ({})".format(nrop, ",".join(operators))
+                opstr[table_name] = "{} ({})".format(ok, ",".join(operators))
+            else:
+                opstr[table_name] = "{} ({})".format(False, "-")
 
-        print "| {: <6} | {: <3} | {: <30} | {: <30} |".format(node,
-                                                               gpsstr,
-                                                               pingstr,
-                                                               modemstr)
+        for table_name in [HTTP]:
+            if table_name in nodes[node]:
+                operators = []
+                ok = len(nodes[node][table_name]) == 3
+                for op in nodes[node][table_name]:
+                    diff = nodes[node][table_name][op]
+                    operators.append("{}({})".format(op, int(diff)))
+                while len(operators) < 3:
+                    operators.append("-")
 
-#        print "Nodes in table {} : {}".format(table_name, ",".join([str(e) for e in nodes]))
+                opstr[table_name] = "{} ({})".format(ok, ",".join(operators))
+            else:
+                opstr[table_name] = "{} ({})".format(False, "-")
+
+        print "| {: <6} | {: <15} | {: <50} | {: <50} | {: <50} |".format(node,
+                                                               opstr[GPS],
+                                                               opstr[PING],
+                                                               opstr[MODEM],
+                                                               opstr[HTTP])
+
+# #        print "Nodes in table {} : {}".format(table_name, ",".join([str(e) for e in nodes]))
 
     cluster.shutdown()
