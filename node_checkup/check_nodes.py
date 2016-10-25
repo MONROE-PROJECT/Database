@@ -22,7 +22,7 @@ import syslog
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
-from cassandra.query import dict_factory
+from cassandra.query import dict_factory, ordered_dict_factory
 from cassandra import ConsistencyLevel
 from cassandra import InvalidRequest
 from cassandra.auth import PlainTextAuthProvider
@@ -64,7 +64,7 @@ def create_arg_parser():
     return parser
 
 
-def parse_special_args(args, parser):
+def parse_special_args(args, parser, now):
     """Parse and varifies user,password and failed,processed dirs."""
     db_user = None
     db_password = None
@@ -100,13 +100,13 @@ def parse_special_args(args, parser):
         span = hours*60
     else:
         span = int(args.timespan)
-    return (int(time.time() - span), db_user, db_password)
+    return (int(now - span), db_user, db_password)
 
 if __name__ == '__main__':
     parser = create_arg_parser()
     args = parser.parse_args()
-
-    span, db_user, db_password = parse_special_args(args, parser)
+    now = time.time()
+    span, db_user, db_password = parse_special_args(args, parser, now)
 
     # Assuming default port: 9042, clusters and sessions are longlived and
     # should be reused
@@ -116,26 +116,172 @@ if __name__ == '__main__':
     auth = PlainTextAuthProvider(username=db_user, password=db_password)
     cluster = Cluster(args.hosts, auth_provider=auth)
     session = cluster.connect(args.keyspace)
-    session.row_factory = dict_factory
-    table_names = cluster.metadata.keyspaces[args.keyspace].tables.keys()
+    #session.row_factory = dict_factory
+    session.row_factory = ordered_dict_factory
+    keyspace = cluster.metadata.keyspaces[args.keyspace]
+    table_names = keyspace.tables.keys()
+    # Check for tables not containing obligatory keys
+    print "{:#<80.80}".format("#### These tables does not contain "
+           "timestamp or/and nodeid ")
     for table_name in table_names:
-        if ('timestamp' not in cluster.metadata.keyspaces[args.keyspace].tables[table_name].columns.keys() or
-            'nodeid' not in cluster.metadata.keyspaces[args.keyspace].tables[table_name].columns.keys()):
-            print "Does not contain timestamp or and nodeid  {}".format(table_name)
-            continue
-        query = 'SELECT nodeid, timestamp from {} where timestamp > {} ALLOW FILTERING'.format(table_name, span)
+        col_names = keyspace.tables[table_name].columns.keys()
+        if 'timestamp' not in col_names or 'nodeid' not in col_names:
+            print ("{}").format(table_name)
+    print "{:#<80}".format("")
+    simple_query = {}
+    error_query = {}
+    spec_query = {}
+    # These queries are only used to get nodeid seen in the db
+    tables = ['monroe_meta_node_sensor',
+              'monroe_exp_exhaustive_paris',
+              'monroe_exp_simple_traceroute',
+              'monroe_meta_node_event']
+    for table_name in ['monroe_meta_node_sensor',
+                       'monroe_exp_exhaustive_paris',
+                       'monroe_exp_simple_traceroute',
+                       'monroe_meta_node_event']:
+        simple_query[table_name] = ('SELECT distinct nodeid from '
+                                    '{} where timestamp > {} '
+                                    'ALLOW FILTERING').format(table_name, span)
+
+    # Only check for errors
+    error_query['monroe_meta_node_event'] = ('SELECT distinct nodeid '
+                                             'from monroe_meta_node_event '
+                                             'where timestamp > {} '
+                                             'AND eventtype = '
+                                             '\'Watchdog.Failed\' '
+                                             'ALLOW FILTERING').format(span)
+
+    # Specific checks
+    GPS = 'monroe_meta_device_gps'
+    PING = 'monroe_exp_ping'
+    MODEM = 'monroe_meta_device_modem'
+    spec_query[PING] = ('SELECT nodeid, '
+                        'timestamp, '
+                        'operator, '
+                        'iccid '
+                        'from {} '
+                        'where timestamp > {} '
+                        'ALLOW FILTERING').format(PING, span)
+    spec_query[MODEM] = ('SELECT nodeid, '
+                         'timestamp, '
+                         'operator, '
+                         'iccid, '
+                         'internalipaddress, '
+                         'internalinterface, '
+                         'ipaddress, '
+                         'interfacename '
+                         'from {} '
+                         'where timestamp > {} '
+                         'ALLOW FILTERING').format(MODEM, span)
+    spec_query[GPS] = ('SELECT nodeid, timestamp '
+                       'from {} '
+                       'where timestamp > {} '
+                       'ALLOW FILTERING').format(GPS, span)
+
+    # Existance checks
+    nodes_seen = set()
+    for table_name, query in simple_query.iteritems():
         try:
-            results[table_name] = session.execute(query)
+            for row in session.execute(query):
+                nodes_seen.add(int(row['nodeid']))
         except Exception as e:
             print "Error for table {} : {}".format(table_name, e)
 
-    for table_name, result in results.iteritems():
-        nodes = set()
+    nodes = {}
+    for node in nodes_seen:
+        nodes[node] = {}
+
+    # Error check
+    for table_name, query in error_query.iteritems():
         try:
-            for row in result:
-                nodes.add(int(row['nodeid']))
+            for row in session.execute(query):
+                nodes[int(row['nodeid'])]['Watchdog.failed'] = True
         except Exception as e:
             print "Error for table {} : {}".format(table_name, e)
-        print "Nodes in table {} : {}".format(table_name, ",".join([str(e) for e in nodes]))
+
+    # Specific checks
+    GRACE = 100000
+    for table_name, query in spec_query.iteritems():
+        try:
+            for row in session.execute(query):
+                nodeid = int(row['nodeid'])
+                ts = float(row['timestamp'])
+                if nodeid not in nodes:
+                    nodes[nodeid] = {}
+
+                if table_name == GPS:
+                    if table_name not in nodes[nodeid]:
+                        nodes[nodeid][table_name] = {'timestamp': ts}
+
+                    if abs(nodes[nodeid][table_name]['timestamp'] - ts) < GRACE:
+                        nodes[nodeid][table_name]['timestamp'] = ts
+
+                if table_name == PING or table_name == MODEM:
+                    iccid = long(row['iccid'])
+                    op = str(row['operator'])
+                    if table_name not in nodes[nodeid]:
+                        nodes[nodeid][table_name] = {}
+
+                    if (iccid not in nodes[nodeid][table_name] or
+                        abs(nodes[nodeid][table_name][iccid]['timestamp'] -
+                        ts) < GRACE):
+                        nodes[nodeid][table_name][iccid] = {
+                                                            'operator': op,
+                                                            'timestamp': ts
+                                                            }
+
+        except Exception as e:
+            print "Error for table {} : {}".format(table_name, e)
+
+    print "| {: <6} | {: <3} | {: <30} | {: <30} |".format('NodeID',
+                                             'GPS',
+                                             'Ping(operator)',
+                                             'Modem(operator)')
+    print "| {:-<6} | {:-<3} | {:-<30} | {:-<30} |".format("", "", "", "")
+
+
+    nodeline = ""
+
+    for node in nodes:
+        gpsstr = "-"
+        if (GPS in nodes[node] and
+            abs(now - nodes[node][GPS]['timestamp']) < GRACE):
+            gpsstr = "X"
+
+        pingstr = "{} ({})".format(0, "-,-,-")
+        if PING in nodes[node]:
+            operators = []
+            for iccid in nodes[node][PING]:
+                diff = abs(now - nodes[node][PING][iccid]['timestamp'])
+                op = nodes[node][PING][iccid]['operator']
+                if diff < GRACE:
+                    operators.append("{}".format(str(op)))
+
+            nrop = len(operators)
+            while len(operators) < 3:
+                operators.append("-")
+            pingstr = "{} ({})".format(nrop, ",".join(operators))
+
+        modemstr = "{} ({})".format(0, "-,-,-")
+        if MODEM in nodes[node]:
+            operators = []
+            for iccid in nodes[node][MODEM]:
+                diff = abs(now - nodes[node][MODEM][iccid]['timestamp'])
+                op = nodes[node][MODEM][iccid]['operator']
+                if diff < GRACE:
+                    operators.append("{}".format(str(op)))
+
+            nrop = len(operators)
+            while len(operators) < 3:
+                operators.append("-")
+            modemstr = "{} ({})".format(nrop, ",".join(operators))
+
+        print "| {: <6} | {: <3} | {: <30} | {: <30} |".format(node,
+                                                               gpsstr,
+                                                               pingstr,
+                                                               modemstr)
+
+#        print "Nodes in table {} : {}".format(table_name, ",".join([str(e) for e in nodes]))
 
     cluster.shutdown()
