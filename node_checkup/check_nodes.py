@@ -240,30 +240,12 @@ if __name__ == '__main__':
                                                             'op': op,
                                                             'ts': []
                                                             }
-                    
+
                         if table_name in [MODEM]:
                             intif = str(row['internalinterface'])
                             hostif = str(row['interfacename'])
                             nodes[nodeid][table_name][iccid]['intif'] = intif
                             nodes[nodeid][table_name][iccid]['if'] = hostif
-
-                    nodes[nodeid][table_name][iccid]['ts'].append(ts)
-
-                if table_name in [MODEM]:
-                    iccid = str(row['iccid'])
-                    op = str(row['operator'].encode('utf-8'))
-                    intif = str(row['internalinterface'])
-                    hostif = str(row['interfacename'])
-                    if table_name not in nodes[nodeid]:
-                        nodes[nodeid][table_name] = {}
-
-                    if iccid not in nodes[nodeid][table_name]:
-                        nodes[nodeid][table_name][iccid] = {
-                                                            'op': op,
-                                                            'intif': intif,
-                                                            'if': hostif,
-                                                            'ts': []
-                                                            }
 
                     nodes[nodeid][table_name][iccid]['ts'].append(ts)
 
