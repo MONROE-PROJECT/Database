@@ -107,12 +107,11 @@ def parse_special_args(args, parser, now):
     return (int(now - span), db_user, db_password)
 
 
-
 if __name__ == '__main__':
     parser = create_arg_parser()
     args = parser.parse_args()
     now = time.time()
-    span, db_user, db_password = parse_special_args(args, parser, now)
+    since_ts, db_user, db_password = parse_special_args(args, parser, now)
 
     # Assuming default port: 9042, clusters and sessions are longlived and
     # should be reused
@@ -123,32 +122,32 @@ if __name__ == '__main__':
     cluster = Cluster(args.hosts, auth_provider=auth)
     session = cluster.connect(args.keyspace)
     session.row_factory = dict_factory
-    #session.row_factory = ordered_dict_factory
     keyspace = cluster.metadata.keyspaces[args.keyspace]
     table_names = keyspace.tables.keys()
+
     # Check for tables not containing obligatory keys
     print "{:#<80.80}".format("#### These tables does not contain "
-           "timestamp or/and nodeid ")
+                              "timestamp or/and nodeid ")
+
     for table_name in table_names:
         col_names = keyspace.tables[table_name].columns.keys()
         if 'timestamp' not in col_names or 'nodeid' not in col_names:
             print ("{}").format(table_name)
-    print "{:#<80}".format("")
+
+    print "{:#<80}\n".format("")
+
     simple_query = {}
     error_query = {}
     spec_query = {}
     # These queries are only used to get nodeid seen in the db
-    tables = ['monroe_meta_node_sensor',
-              'monroe_exp_exhaustive_paris',
-              'monroe_exp_simple_traceroute',
-              'monroe_meta_node_event']
     for table_name in ['monroe_meta_node_sensor',
                        'monroe_exp_exhaustive_paris',
                        'monroe_exp_simple_traceroute',
                        'monroe_meta_node_event']:
         simple_query[table_name] = ('SELECT distinct nodeid from '
                                     '{} where timestamp > {} '
-                                    'ALLOW FILTERING').format(table_name, span)
+                                    'ALLOW FILTERING'
+                                    ).format(table_name, since_ts)
 
     # Only check for errors
     error_query['monroe_meta_node_event'] = ('SELECT distinct nodeid '
@@ -156,7 +155,8 @@ if __name__ == '__main__':
                                              'where timestamp > {} '
                                              'AND eventtype = '
                                              '\'Watchdog.Failed\' '
-                                             'ALLOW FILTERING').format(span)
+                                             'ALLOW FILTERING'
+                                             ).format(since_ts)
 
     # Specific checks
     GPS = 'monroe_meta_device_gps'
@@ -169,29 +169,29 @@ if __name__ == '__main__':
                         'iccid '
                         'from {} '
                         'where timestamp > {} '
-                        'ALLOW FILTERING').format(PING, span)
+                        'ALLOW FILTERING').format(PING, since_ts)
     spec_query[HTTP] = ('SELECT nodeid, '
                         'timestamp, '
                         'operator, '
                         'iccid '
                         'from {} '
                         'where timestamp > {} '
-                        'ALLOW FILTERING').format(HTTP, span)
+                        'ALLOW FILTERING').format(HTTP, since_ts)
     spec_query[MODEM] = ('SELECT nodeid, '
                          'timestamp, '
                          'operator, '
                          'iccid, '
-                    #     'internalipaddress, '
+                         # 'internalipaddress, '
                          'internalinterface, '
-                    #     'ipaddress, '
+                         # 'ipaddress, '
                          'interfacename '
                          'from {} '
                          'where timestamp > {} '
-                         'ALLOW FILTERING').format(MODEM, span)
+                         'ALLOW FILTERING').format(MODEM, since_ts)
     spec_query[GPS] = ('SELECT nodeid, timestamp '
                        'from {} '
                        'where timestamp > {} '
-                       'ALLOW FILTERING').format(GPS, span)
+                       'ALLOW FILTERING').format(GPS, since_ts)
 
     # Existance checks
     nodes_seen = set()
@@ -229,7 +229,7 @@ if __name__ == '__main__':
 
                     nodes[nodeid][table_name].append(ts)
 
-                if table_name in [PING, HTTP]:
+                if table_name in [PING, HTTP, MODEM]:
                     iccid = str(row['iccid'])
                     op = str(row['operator'].encode('utf-8'))
                     if table_name not in nodes[nodeid]:
@@ -240,6 +240,12 @@ if __name__ == '__main__':
                                                             'op': op,
                                                             'ts': []
                                                             }
+                    
+                        if table_name in [MODEM]:
+                            intif = str(row['internalinterface'])
+                            hostif = str(row['interfacename'])
+                            nodes[nodeid][table_name][iccid]['intif'] = intif
+                            nodes[nodeid][table_name][iccid]['if'] = hostif
 
                     nodes[nodeid][table_name][iccid]['ts'].append(ts)
 
@@ -265,109 +271,97 @@ if __name__ == '__main__':
             print "Error for table {} : {}".format(table_name, e)
             print row
             continue
+
     # Sort the timestamps and check for biggest time diff between timestamps
     for nodeid in nodes:
         for table_name in nodes[nodeid]:
             if table_name == GPS:
-                # Sort the timestamps so we can find the biggest difference
-                nodes[nodeid][table_name].sort()
                 ts = nodes[nodeid][table_name]
-                ts.append(now)
                 # Append the time now so we can check so we have recent data
+                ts.append(now)
+                # Append the time from start of check so we can check so we
+                # have all past data
+                ts.append(since_ts)
+                # Sort the timestamps so we can find the largest difference
+                ts.sort()
                 diff = [ts[i+1] - ts[i] for i in range(len(ts)-1)]
-                nodes[nodeid][table_name] = max(diff)
+                # Sort with largest first
+                diff.sort(reverse=True)
+                nodes[nodeid][table_name] = diff
             if table_name in [PING, MODEM, HTTP]:
                 for iccid in nodes[nodeid][table_name]:
                     # Sort the timestamps so we can find the biggest difference
-                    nodes[nodeid][table_name][iccid]['ts'].sort()
                     ts = nodes[nodeid][table_name][iccid]['ts']
                     # Append the time now so we can check so we have recent data
                     ts.append(now)
+                    # Append the time from start of check so we can check so we
+                    # have all past data
+                    ts.append(since_ts)
+                    # Sort the timestamps so we can find the largest difference
+                    ts.sort()
                     diff = [ts[i+1] - ts[i] for i in range(len(ts)-1)]
-                    nodes[nodeid][table_name][iccid]['ts'] = max(diff)
+                    # Sort with largest first
+                    diff.sort(reverse=True)
+                    nodes[nodeid][table_name][iccid]['ts'] = diff
     if args.verbose:
         template = "| {: <6} | {: <15} | {: <50} | {: <80} | {: <50} |"
     else:
         template = "| {: <6} | {: <3} | {: <13} | {: <15} | {: <15} |"
 
     # Header
+    GRACE = 3600
+    pinghdr = "Ping({})".format(GRACE)
+    gpshdr = "GPS({})".format(GRACE)
+    modemhdr = 'Modem(op0,op1,op2)'
+    httphdr = 'HTTP(exists)'
     print template.format('NodeID',
-                          'GPS',
-                          'Ping(operator)',
-                          'Modem(operator)',
-                          'HTTP(operator)')
+                          gpshdr,
+                          pinghdr,
+                          modemhdr,
+                          httphdr)
     print template.format('---',
                           '---',
                           '---',
                           '---',
                           '---')
 
-    #print "| {:-<6} | {:-<15} | {:-<50} | {:-<80} | {:-<50} |".format("",
-    #                                                                  "",
-    #                                                                  "",
-    #                                                                  "",
-    #                                                                  "")
-
-    GRACE = 3600
     for node in nodes:
         results = {}
-        results[GPS] = {'ok' : False}
+        results[GPS] = {'ok': False}
         if GPS in nodes[node]:
-            if nodes[node][GPS] > GRACE:
-                results[GPS]['ok'] = False
+            maxdiff = nodes[node][GPS][0]
+            results[GPS]['ok'] = maxdiff < GRACE
+            results[GPS]['str'] = "{}".format(int(maxdiff))
 
-            results[GPS]['str'] = "{}".format(int(nodes[node][GPS]))
-
-        for table_name in [PING]:
-            results[table_name] = {'ok' : False}
+        for table_name in [PING, MODEM, HTTP]:
+            results[table_name] = {'ok': False}
             if table_name in nodes[node]:
                 results[table_name] = {}
                 operators = []
-                results[table_name]['ok'] = len(nodes[node][table_name]) == 3
+                if table_name == PING or table_name == HTTP:
+                    intifnr = len(nodes[node][table_name])
+                else:
+                    intifnr = 0
                 for iccid in nodes[node][table_name]:
                     op = nodes[node][table_name][iccid]['op']
-                    diff = nodes[node][table_name][iccid]['ts']
-                    operators.append("{}({})".format(op, int(diff)))
-                    if diff > GRACE:
-
-                        results[table_name]['ok'] = False
-                while len(operators) < 3:
-                    operators.append("-")
-
-                results[table_name]['str'] = "{}".format(",".join(operators))
-
-        for table_name in [MODEM]:
-            results[table_name] = {'ok' : False}
-            if table_name in nodes[node]:
-                results[table_name] = {}
-                operators = []
-                intifnr = 0
-                for iccid in nodes[node][table_name]:
-                    op = nodes[node][table_name][iccid]['op']
-                    intif = nodes[node][table_name][iccid]['intif']
-                    hostif = nodes[node][table_name][iccid]['if']
-                    diff = nodes[node][table_name][iccid]['ts']
-                    if intif in ['op0', 'op1', 'op2']:
+                    maxdiff = nodes[node][table_name][iccid]['ts'][0]
+                    if table_name == MODEM:
+                        intif = nodes[node][table_name][iccid]['intif']
+                        hostif = nodes[node][table_name][iccid]['if']
+                        if intif in ['op0', 'op1', 'op2']:
                             intifnr += 1
-                    operators.append("{}-{}({})".format(op, hostif, int(diff)))
+                        operators.append("{}-{}({})".format(op,
+                                                            hostif,
+                                                            int(maxdiff)))
+                    else:
+                        operators.append("{}({})".format(op, int(maxdiff)))
+                    if table_name == PING and maxdiff > GRACE:
+                        intifnr -= 1
 
                 while len(operators) < 3:
                     operators.append("-")
+
                 results[table_name]['ok'] = intifnr == 3
-                results[table_name]['str'] = "{}".format(",".join(operators))
-
-        for table_name in [HTTP]:
-            results[table_name] = {'ok' : False}
-            if table_name in nodes[node]:
-                results[table_name] = {}
-                operators = []
-                results[table_name]['ok'] = len(nodes[node][table_name]) == 3
-                for iccid in nodes[node][table_name]:
-                    op = nodes[node][table_name][iccid]['op']
-                    operators.append("{}({})".format(op, int(diff)))
-                while len(operators) < 3:
-                    operators.append("-")
-
                 results[table_name]['str'] = "{}".format(",".join(operators))
 
         datastr = {}
@@ -375,7 +369,8 @@ if __name__ == '__main__':
             datastr[table_name] = str(results[table_name]['ok'])
             if args.verbose:
                 if 'str' in results[table_name]:
-                    datastr[table_name] += "({})".format(results[table_name]['str'])
+                    resultstr = results[table_name]['str']
+                    datastr[table_name] += "({})".format(resultstr)
                 else:
                     datastr[table_name] += "({})".format("-")
 
