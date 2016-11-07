@@ -30,6 +30,7 @@ from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
 import monroevalidator
 import lzma
+import errno
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
@@ -274,15 +275,19 @@ def schedule_workers(in_dir,
     # Create outdirs
     dest_dir_processed = processed_dir + str(datetime.date.today())
     try:
-        os.stat(dest_dir_processed)
-    except:
         os.makedirs(dest_dir_processed)
+    except OSError as e:
+        # If the directory already exist do nothing
+        if e.errno != errno.EEXIST:
+            raise e
 
     dest_dir_failed = failed_dir + str(datetime.date.today())
     try:
-        os.stat(dest_dir_failed)
-    except:
         os.makedirs(dest_dir_failed)
+    except OSError as e:
+        # If the directory already exist do nothing
+        if e.errno != errno.EEXIST:
+            raise e
 
     # Scan in_dir and look for all files ending in .json excluding
     # processsed_dir and failed_dir to avoid insert "loops"
