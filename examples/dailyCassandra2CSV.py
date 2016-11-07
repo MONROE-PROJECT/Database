@@ -15,6 +15,8 @@
   child process.
 
  Dependencies: sudo pip install cassandra-driver python-dateutil
+
+ Cassandra driver (Python) documentation: https://datastax.github.io/python-driver/index.html
 """
 
 from cassandra.cluster import Cluster
@@ -273,7 +275,7 @@ def DumpOneDay(session, daysBack):
 if __name__ == '__main__':
 
 	auth = PlainTextAuthProvider(username = "YYYYYY", password = "XXXXXX")
-	cluster = Cluster(['127.0.0.1'], auth_provider = auth)
+	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
 	session = cluster.connect("monroe") # Set default keyspace to 'monroe'
 	session.default_timeout = None
