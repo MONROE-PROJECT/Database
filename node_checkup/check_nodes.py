@@ -6,10 +6,8 @@
 # License: GNU General Public License v3
 # Developed for use by the EU H2020 MONROE project
 
-r"""
+""""
 Will try to determine which nodes that regularly contribute to the database.
-
-Will look in all tables and see what nodes has contributed data.
 """
 import json
 import time
@@ -53,7 +51,7 @@ def create_arg_parser():
                         help="Keyspace to use")
     parser.add_argument('-t', '--timespan',
                         required=True,
-                        help=("Xw Xd Xm "
+                        help=("Xw Xd Xh Xm "
                               "What timespan to look for (now-timespan)"))
     parser.add_argument('--authenv',
                         action="store_true",
@@ -101,7 +99,7 @@ def parse_special_args(args, parser, now):
         span = hours*3600
     elif "m" in args.timespan:
         minutes = int(args.timespan.strip('m'))
-        span = hours*60
+        span = minutes*60
     else:
         span = int(args.timespan)
     return (int(now - span), db_user, db_password)
@@ -149,7 +147,7 @@ if __name__ == '__main__':
                                     'ALLOW FILTERING'
                                     ).format(table_name, since_ts)
 
-    # Only check for errors
+    # Only check for errors, not used atm
     error_query['monroe_meta_node_event'] = ('SELECT distinct nodeid '
                                              'from monroe_meta_node_event '
                                              'where timestamp > {} '
@@ -285,6 +283,7 @@ if __name__ == '__main__':
                     # Sort with largest first
                     diff.sort(reverse=True)
                     nodes[nodeid][table_name][iccid]['ts'] = diff
+
     if args.verbose:
         template = "| {: <6} | {: <15} | {: <50} | {: <80} | {: <50} |"
     else:
@@ -340,7 +339,11 @@ if __name__ == '__main__':
                     if table_name == PING and maxdiff > GRACE:
                         intifnr -= 1
 
-                while len(operators) < 3:
+                if table_name == MODEM:
+                    expected_nr_ops = 4
+                else:
+                    expected_nr_ops = 3
+                while len(operators) < expected_nr_ops:
                     operators.append("-")
 
                 results[table_name]['ok'] = intifnr == 3
