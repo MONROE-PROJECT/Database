@@ -1,0 +1,43 @@
+<!-- BEWARE THAT YOU CANNOT USE GOOGLE MAPS WITHOUT A DEVELOPER KEY.
+This is just for illustrative purposes!
+If you plan to use it intensely, please get a key.
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <title>KML Layers</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+
+function initMap() {
+  var map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 11,
+    center: {lat: -3.7732487, lng: 40.33684}
+  });
+
+  var ctaLayer = new google.maps.KmlLayer({
+    url: 'http://www.monroe-system.eu/kml/55_1473940800_1473944400.kml',
+    map: map
+  });
+}
+
+    </script>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?callback=initMap">
+    </script>
+  </body>
+</html>
