@@ -35,16 +35,6 @@ CREATE TABLE devices (
 CREATE CUSTOM INDEX i_devices_nodeid on devices(NodeId) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
 ///////////////////////////////////////////////////////////////////////////////
-CREATE TABLE data_id_to_table (
-    DataId      text,
-    DataVersion int,
-
-    TableName   text,
-
-    PRIMARY KEY (DataId, DataVersion)
-);
-
-///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_ping (
     NodeId         text,
     Guid           text,
@@ -254,7 +244,7 @@ CREATE TABLE monroe_exp_http_download (
     Speed          double,
     Port           text,
 
-    PRIMARY KEY (NodeId, Iccid, Timestamp, SequenceNumber)
+    PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
 
 ///////////////////////////////////////////////////////////////////////////////
