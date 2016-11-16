@@ -441,7 +441,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     req_tm            decimal,
     res_tm            decimal,
 
-    PRIMARY KEY ((NodeId, Iccid, s_ip), first, last)
+    PRIMARY KEY ((NodeId, Iccid, s_ip), first, last, c_ip, c_port, s_port)
 );
 
 ///////////////////////////////////////////////////////////////////////////////
