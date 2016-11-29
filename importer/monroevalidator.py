@@ -40,10 +40,14 @@ def _check_ping(entry, VERBOSITY):
     Do some simple checks on the ping container so the values are reasonable.
     """
     try:
-        return (entry['SequenceNumber'] >= 0 and
-                entry['Rtt'] > 0 and
-                entry['Bytes'] > 0 and
-                entry['TimeStamp'] > 0) or "Value error."
+        if 'Rtt' in entry and 'Bytes' in entry:
+            return (entry['SequenceNumber'] >= 0 and
+                    entry['Rtt'] > 0 and
+                    entry['Bytes'] > 0 and
+                    entry['TimeStamp'] > 0) or "Value error."
+        else:
+            return (entry['SequenceNumber'] >= 0 and
+                    entry['TimeStamp'] > 0) or "Value error."
     except Exception as error:
         return "Missing value in entry {}".format(error)
 
