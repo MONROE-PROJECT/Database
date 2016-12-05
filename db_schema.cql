@@ -112,24 +112,6 @@ CREATE TABLE monroe_meta_device_gps (
 /*CREATE CUSTOM INDEX i_monroe_meta_device_gps_timestamp on monroe_meta_device_gps(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
 
 ///////////////////////////////////////////////////////////////////////////////
-CREATE TABLE monroe_meta_connectivity (
-    NodeId             text,
-    Timestamp          decimal,
-    DataId             text,
-    DataVersion        int,
-    SequenceNumber     bigint,
-
-    Iccid              text,
-    InterfaceName      text,
-    MccMnc             int,
-    Mode               int,
-    Rssi               int,
-
-    PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
-);
-/*CREATE CUSTOM INDEX i_monroe_meta_connectivity_timestamp on monroe_meta_connectivity(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
-
-///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_meta_node_sensor (
     NodeId                 text,
     Timestamp              decimal,
