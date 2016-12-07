@@ -41,24 +41,25 @@ def DumpPositions(session, startTime, endTime, nodeID):
 				#"</Style>\n"
 				"<Folder>\n")
 
-		query = "select nodeid, timestamp, latitude, longitude, altitude, speed, satellitecount from monroe_meta_device_gps where nodeid='{}' and timestamp >= {} and timestamp < {} allow filtering".format(nodeID, startTime, endTime)
+		query = "select nmea, nodeid, timestamp, latitude, longitude, altitude, speed, satellitecount from monroe_meta_device_gps where nodeid='{}' and timestamp >= {} and timestamp < {} order by timestamp".format(nodeID, startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
 		count = 0
 		for row in rows:
 			try:
-				description = "Latitud: {} {}\nLongitud: {} {}\nAltitud: {}\nVelocidad: {} Km/h\n".format(
-                                        row.latitude, 'N' if row.latitude >= 0.0 else 'S',
-                                        row.longitude, 'E' if row.longitude >= 0.0 else 'W',
-                                        row.altitude, row.speed)
-				output.write("\n<Placemark>\n"
-					"<description>{}</description>\n"
-					"<styleUrl>#iconoPosicion</styleUrl>\n"
-					"<Point> <coordinates>{},{},{} </coordinates> </Point>\n"
-					"</Placemark>\n".format(description, row.longitude, row.latitude, row.altitude))
+				if row.nmea.find("GPRMC") != -1:
+					description = "Latitud: {} {}\nLongitud: {} {}\nAltitud: {}\nVelocidad: {} Km/h\n".format(
+                                        	row.latitude, 'N' if row.latitude >= 0.0 else 'S',
+                                        	row.longitude, 'E' if row.longitude >= 0.0 else 'W',
+                                        	row.altitude, row.speed)
+					output.write("\n<Placemark>\n"
+						"<description>{}</description>\n"
+						"<styleUrl>#iconoPosicion</styleUrl>\n"
+						"<Point> <coordinates>{},{},{} </coordinates> </Point>\n"
+						"</Placemark>\n".format(description, row.longitude, row.latitude, row.altitude))
+					count += 1
 			except Exception as error:
                                 print "Error in row:", row, error
-			count += 1
 
                 # Write KML file footers.
 		output.write("</Folder>\n</Document>\n</kml>\n")
@@ -76,7 +77,7 @@ if __name__ == '__main__':
 	session.default_fetch_size = 1000
 
 	# Thu Sep 15 2016 14:00:00 GMT+0200 (Romance Daylight Time)
-        DumpPositions(session, 1473940800, 1473940800 + 3600*1, 54);
+	DumpPositions(session, 1473940800, 1473940800 + 3600*1, 54);
 
 	cluster.shutdown() # Closes connection to the DB and frees resources.
 
