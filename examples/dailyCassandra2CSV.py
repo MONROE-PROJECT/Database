@@ -70,7 +70,7 @@ def DumpOneDay(session, daysBack):
 	session.default_fetch_size = 1000
 	fileName = FileNamePrefix(startTime) + "{}_monroe_exp_http_download.csv".format(startTime)
 	with open(fileName, "wt") as output:
-		output.write("nodeid,iccid,timestamp,sequencenumber,bytes,dataid,dataversion,downloadtime,guid,host,operator,port,setuptime,speed,totaltime\n")
+		output.write("nodeid,iccid,timestamp,sequencenumber,bytes,dataid,dataversion,downloadtime,guid,host,operator,port,setuptime,speed,totaltime,errorcode,url\n")
 		query = "select * from monroe_exp_http_download where timestamp >= {} and timestamp < {} allow filtering".format(startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
