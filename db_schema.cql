@@ -225,6 +225,9 @@ CREATE TABLE monroe_exp_http_download (
     Host           text,
     Speed          double,
     Port           text,
+	
+    ErrorCode      int,
+    Url            text,
 
     PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
