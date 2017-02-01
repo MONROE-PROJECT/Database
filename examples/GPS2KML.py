@@ -17,6 +17,7 @@ from time import struct_time, strftime, gmtime
 from datetime import datetime
 from calendar import timegm
 from dateutil.relativedelta import relativedelta
+from decimal import *
 
 def DumpPositions(session, startTime, endTime, nodeID):
 	print "\n======================================================================"
@@ -51,7 +52,7 @@ def DumpPositions(session, startTime, endTime, nodeID):
 					description = "Latitud: {} {}\nLongitud: {} {}\nAltitud: {}\nVelocidad: {} Km/h\n".format(
                                         	row.latitude, 'N' if row.latitude >= 0.0 else 'S',
                                         	row.longitude, 'E' if row.longitude >= 0.0 else 'W',
-                                        	row.altitude, row.speed * 1.852)
+                                        	row.altitude, row.speed * Decimal('1.852') if row.speed != None else row.speed)
 					output.write("\n<Placemark>\n"
 						"<description>{}</description>\n"
 						"<styleUrl>#iconoPosicion</styleUrl>\n"
