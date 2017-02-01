@@ -51,7 +51,7 @@ def DumpPositions(session, startTime, endTime, nodeID):
 					description = "Latitud: {} {}\nLongitud: {} {}\nAltitud: {}\nVelocidad: {} Km/h\n".format(
                                         	row.latitude, 'N' if row.latitude >= 0.0 else 'S',
                                         	row.longitude, 'E' if row.longitude >= 0.0 else 'W',
-                                        	row.altitude, row.speed)
+                                        	row.altitude, row.speed * 1.852)
 					output.write("\n<Placemark>\n"
 						"<description>{}</description>\n"
 						"<styleUrl>#iconoPosicion</styleUrl>\n"
