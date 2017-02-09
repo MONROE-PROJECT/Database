@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
 """
- Example tool to convert GPS positions of MONROE nodes in the Cassandra database to KML.
+ Example tool to correlate modem connection modes with GPS positions for a node in a time interval.
+  Output is in KML format for Google Earth.
   https://www.monroe-project.eu
   Creator: Miguel Peon Quiros, IMDEA Networks Institute
   mikepeon@imdea.org
@@ -127,8 +128,9 @@ def FetchModemStatus(session, startTime, endTime, nodeID, iccids):
 	count = 0
 	for row in rows:
 		try:
-			modem.append(row)
-			count += 1
+			if (operator == None) or (operator == row.operator):
+				modem.append(row)
+				count += 1
 		except Exception as error:
 			print "Error in row:", row, error
 	print "Read {} modem statuses\n".format(count)
@@ -250,6 +252,13 @@ def TraverseGPSAndModem(gps, modem):
 ###############################################################################
 if __name__ == '__main__':
 
+	# Configure search parameters
+	startTime = 1486728000  #1486382400
+	endTime = startTime + 3600*72
+	nodeID = 54;
+	operator = "voda ES" # None for no filtering
+
+	# Connect to the DB
 	auth = PlainTextAuthProvider(username = "xxxx", password = "yyyy")
 	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
@@ -257,10 +266,6 @@ if __name__ == '__main__':
 	session.default_timeout = None
 	session.default_fetch_size = 1000
 
-	# Thu Sep 15 2016 14:00:00 GMT+0200 (Romance Daylight Time)
-	startTime = 1486728000  #1486382400
-	endTime = startTime + 3600*72
-	nodeID = 54
 	iccids = FetchNodeICCIDs(session, nodeID)
 	print "Node {} has ICCIDs: {}\n".format(nodeID, iccids)
         gps = FetchPositions(session, startTime, endTime, nodeID);
