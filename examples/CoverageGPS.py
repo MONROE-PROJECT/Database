@@ -251,6 +251,7 @@ def TraverseGPSAndModem(gps, modem):
 
 ###############################################################################
 if __name__ == '__main__':
+	print "THE ANALYSIS COVERS FROM THE MINIMUM COMMON TIMESTAMP TO THE MAXIMUM COMMON TIMESTAMP\n\n"
 
 	# Configure search parameters
 	startTime = 1486728000  #1486382400
@@ -259,7 +260,7 @@ if __name__ == '__main__':
 	operator = "voda ES" # None for no filtering
 
 	# Connect to the DB
-	auth = PlainTextAuthProvider(username = "xxxx", password = "yyyy")
+	auth = PlainTextAuthProvider(username = "monroe", password = "MMBNinE")
 	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
 	session = cluster.connect("monroe") # Set default keyspace to 'monroe'
