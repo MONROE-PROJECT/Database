@@ -19,6 +19,7 @@ from datetime import datetime
 from calendar import timegm
 from dateutil.relativedelta import relativedelta
 from decimal import *
+import argparse
 
 def DumpKML(nodeID, startTime, endTime, entries):
 	fileName = "{}_{}_{}.kml".format(nodeID, startTime, endTime)
@@ -117,7 +118,7 @@ def FetchPositions(session, startTime, endTime, nodeID):
 
 ###############################################################################
 # Returns a list of modem statuses as read from the query rows.
-def FetchModemStatus(session, startTime, endTime, nodeID, iccids):
+def FetchModemStatus(session, startTime, endTime, nodeID, iccids, operator):
 	print "Extracting modem status for node {} during interval [{}, {})".format(nodeID, startTime, endTime)
 	
 	session.default_fetch_size = None
@@ -250,14 +251,33 @@ def TraverseGPSAndModem(gps, modem):
 
 
 ###############################################################################
+def ParseCommandLine():
+	parser = argparse.ArgumentParser(description = "Modem status - GPS to KML mapper")
+
+	parser.add_argument('-n', '--nodeID', help = 'ID of the node to analyze', required = True, type = int)
+	parser.add_argument('-s', '--startTime', help = 'Starting timestamp', required = True, type = int)
+	parser.add_argument('-e', '--endTime', help = 'Ending timestamp (+24 hours by default)', required = False, type = int, default = 0)
+	parser.add_argument('-o', '--operatorName', help = 'Name of the operator to filter (beware of issues when not filtering!). E.g., "voda ES"', required = False, type = str)
+
+	args = parser.parse_args()
+
+	# Validate args
+	if (args.endTime < args.startTime):
+		args.endTime = args.startTime + 3600*24
+
+	# Print parameters
+	print "Modem status - GPS to KML mapper runs with the following parameters:"
+	print "NodeID: {}".format(args.nodeID)
+	print "StartTime: {}".format(args.startTime)
+	print "EndTime: {}".format(args.endTime)
+	print "OperatorName: {}".format(args.operatorName)
+
+	return args
+
+###############################################################################
 if __name__ == '__main__':
 	print "THE ANALYSIS COVERS FROM THE MINIMUM COMMON TIMESTAMP TO THE MAXIMUM COMMON TIMESTAMP\n\n"
-
-	# Configure search parameters
-	startTime = 1486728000  #1486382400
-	endTime = startTime + 3600*72
-	nodeID = 54;
-	operator = "voda ES" # None for no filtering
+	args = ParseCommandLine()
 
 	# Connect to the DB
 	auth = PlainTextAuthProvider(username = "monroe", password = "MMBNinE")
@@ -267,12 +287,12 @@ if __name__ == '__main__':
 	session.default_timeout = None
 	session.default_fetch_size = 1000
 
-	iccids = FetchNodeICCIDs(session, nodeID)
-	print "Node {} has ICCIDs: {}\n".format(nodeID, iccids)
-        gps = FetchPositions(session, startTime, endTime, nodeID);
-	modem = FetchModemStatus(session, startTime, endTime, nodeID, iccids);
+	iccids = FetchNodeICCIDs(session, args.nodeID)
+	print "Node {} has ICCIDs: {}\n".format(args.nodeID, iccids)
+        gps = FetchPositions(session, args.startTime, args.endTime, args.nodeID);
+	modem = FetchModemStatus(session, args.startTime, args.endTime, args.nodeID, iccids, args.operatorName);
 	combinedEntries = TraverseGPSAndModem(gps, modem)
-	DumpKML(nodeID, startTime, endTime, combinedEntries)
+	DumpKML(args.nodeID, args.startTime, args.endTime, combinedEntries)
 
 	#print "Total combined entries: {}".format(len(combinedEntries))
 	#for entry in combinedEntries:
