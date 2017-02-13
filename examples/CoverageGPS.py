@@ -158,7 +158,7 @@ def FetchNodeICCIDs(session, nodeID):
 #  Traverses a list of GPS positions and a list of modem statuses and combines
 # them based on timestamp.
 #  Returns a list of position-modem status.
-def TraverseGPSAndModem(gps, modem):
+def TraverseGPSAndModem(gps, modem, minGPSInterval):
 	combinedEntries = []
 	lastModem = None
 	lastGPS = None
@@ -166,6 +166,7 @@ def TraverseGPSAndModem(gps, modem):
 	iModem = 0
 	iGPS = 0
 	while (iModem < len(modem)) and (iGPS < len(gps)):	# TODO Change to or and check for buffer overruns.
+		filteredPos = False	# Marks whether we are skipping a GPS position or not.
 		# Update the last known GPS and modem entries.
 		if (gps[iGPS].timestamp == modem[iModem].timestamp):
 			lastGPS = gps[iGPS]
@@ -174,8 +175,11 @@ def TraverseGPSAndModem(gps, modem):
 			iGPS += 1
 			iModem += 1
 		elif (gps[iGPS].timestamp < modem[iModem].timestamp):
-			lastGPS = gps[iGPS]
-			lastTimestamp = lastGPS.timestamp
+			if (gps[iGPS].timestamp >= (lastTimestamp + minGPSInterval)):
+				lastGPS = gps[iGPS]
+				lastTimestamp = lastGPS.timestamp
+			else:
+				filteredPos = True
 			iGPS += 1
 		else:	# gps[iGPS].timestamp > modem[iModem].timestamp
 			lastModem = modem[iModem]
@@ -183,7 +187,7 @@ def TraverseGPSAndModem(gps, modem):
 			iModem += 1
 
 		# Create a new entry with the last known GPS and modem values
-		if (lastGPS != None) and (lastModem != None):
+		if (lastGPS != None) and (lastModem != None) and not filteredPos:
 			iconStyle = "#IconUnknown" if lastModem.devicemode == 0 else "#IconDisconnected" if lastModem.devicemode == 1 else "#IconNoService" if lastModem.devicemode == 2 else "#Icon2G" if lastModem.devicemode == 3 else "#Icon3G" if lastModem.devicemode == 4 else "#IconLTE" if lastModem.devicemode == 5 else "#IconUnknown"
 			try:
 				combinedEntries.append(
@@ -258,6 +262,7 @@ def ParseCommandLine():
 	parser.add_argument('-s', '--startTime', help = 'Starting timestamp', required = True, type = int)
 	parser.add_argument('-e', '--endTime', help = 'Ending timestamp (+24 hours by default)', required = False, type = int, default = 0)
 	parser.add_argument('-o', '--operatorName', help = 'Name of the operator to filter (beware of issues when not filtering!). E.g., "voda ES"', required = False, type = str)
+	parser.add_argument('-i', '--minGPSInterval', help = 'Minimum interval between GPS positions with the same modem data', required = False, type = int, default = 0)
 
 	args = parser.parse_args()
 
@@ -271,6 +276,7 @@ def ParseCommandLine():
 	print "StartTime: {}".format(args.startTime)
 	print "EndTime: {}".format(args.endTime)
 	print "OperatorName: {}".format(args.operatorName)
+	print "MinGPSInterval: {}".format(args.minGPSInterval)
 
 	return args
 
@@ -291,7 +297,7 @@ if __name__ == '__main__':
 	print "Node {} has ICCIDs: {}\n".format(args.nodeID, iccids)
         gps = FetchPositions(session, args.startTime, args.endTime, args.nodeID);
 	modem = FetchModemStatus(session, args.startTime, args.endTime, args.nodeID, iccids, args.operatorName);
-	combinedEntries = TraverseGPSAndModem(gps, modem)
+	combinedEntries = TraverseGPSAndModem(gps, modem, args.minGPSInterval)
 	DumpKML(args.nodeID, args.startTime, args.endTime, combinedEntries)
 
 	#print "Total combined entries: {}".format(len(combinedEntries))
