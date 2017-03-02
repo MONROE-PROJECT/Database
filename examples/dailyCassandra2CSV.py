@@ -3,7 +3,7 @@
 """
  Example tool to show access to the MONROE project Cassandra database tables from Python.
   https://www.monroe-project.eu
-  Creator: Miguel PeÃn QuirÃs, IMDEA Networks Institute
+  Creator: Miguel Peon Quiros, IMDEA Networks Institute
   mikepeon@imdea.org
 
  The method shown here is the easiest, but the least efficient because it runs in a single
@@ -66,36 +66,18 @@ def DumpOneDay(session, daysBack):
 			count += 1
 	print FormatDate(), "Dumped {} rows to {}\n".format(count, fileName)
 
-
-	########## monroe_meta_connectivity ###############
-	session.default_fetch_size = 1000
-	fileName = FileNamePrefix(startTime) + "{}_monroe_meta_connectivity.csv".format(startTime)
-	with open(fileName, "wt") as output:
-		output.write("nodeid,iccid,timestamp,sequencenumber,dataid,dataversion,interfacename,mccmnc,mode,rssi\n")
-		query = "select * from monroe_meta_connectivity where timestamp >= {} and timestamp < {} allow filtering".format(startTime, endTime)
-		print query
-		rows = session.execute(query, timeout=None)
-		count = 0
-		for row in rows:
-			try:
-				output.write("{},{},{},{},{},{},{},{},{},{}\n".format(row.nodeid, row.iccid, row.timestamp, row.sequencenumber, row.dataid, row.dataversion, row.interfacename, row.mccmnc, row.mode, row.rssi))
-			except Exception as error:
-                                print "Error in row:", row, error
-			count += 1
-	print FormatDate(), "Dumped {} rows to {}\n".format(count, fileName)
-	
 	########## monroe_exp_http_download ###############
 	session.default_fetch_size = 1000
 	fileName = FileNamePrefix(startTime) + "{}_monroe_exp_http_download.csv".format(startTime)
 	with open(fileName, "wt") as output:
-		output.write("nodeid,iccid,timestamp,sequencenumber,bytes,dataid,dataversion,downloadtime,guid,host,operator,port,setuptime,speed,totaltime\n")
+		output.write("nodeid,iccid,timestamp,sequencenumber,bytes,dataid,dataversion,downloadtime,guid,host,operator,port,setuptime,speed,totaltime,errorcode,url\n")
 		query = "select * from monroe_exp_http_download where timestamp >= {} and timestamp < {} allow filtering".format(startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
 		count = 0
 		for row in rows:
 			try:
-				output.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(row.nodeid, row.iccid, row.timestamp, row.sequencenumber, row.bytes, row.dataid, row.dataversion, row.downloadtime, row.guid, row.host, row.operator, row.port, row.setuptime, row.speed, row.totaltime))
+				output.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(row.nodeid, row.iccid, row.timestamp, row.sequencenumber, row.bytes, row.dataid, row.dataversion, row.downloadtime, row.guid, row.host, row.operator, row.port, row.setuptime, row.speed, row.totaltime, row.errorcode, row.url))
 			except Exception as error:
                                 print "Error in row:", row, error
 			count += 1
@@ -274,7 +256,7 @@ def DumpOneDay(session, daysBack):
 
 if __name__ == '__main__':
 
-	auth = PlainTextAuthProvider(username = "YYYYYY", password = "XXXXXX")
+	auth = PlainTextAuthProvider(username = "xxxx", password = "yyyy")
 	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
 	session = cluster.connect("monroe") # Set default keyspace to 'monroe'

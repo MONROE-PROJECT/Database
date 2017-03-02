@@ -35,16 +35,6 @@ CREATE TABLE devices (
 CREATE CUSTOM INDEX i_devices_nodeid on devices(NodeId) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 
 ///////////////////////////////////////////////////////////////////////////////
-CREATE TABLE data_id_to_table (
-    DataId      text,
-    DataVersion int,
-
-    TableName   text,
-
-    PRIMARY KEY (DataId, DataVersion)
-);
-
-///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_ping (
     NodeId         text,
     Guid           text,
@@ -120,24 +110,6 @@ CREATE TABLE monroe_meta_device_gps (
     PRIMARY KEY (NodeId, Timestamp, SequenceNumber)
 );
 /*CREATE CUSTOM INDEX i_monroe_meta_device_gps_timestamp on monroe_meta_device_gps(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
-
-///////////////////////////////////////////////////////////////////////////////
-CREATE TABLE monroe_meta_connectivity (
-    NodeId             text,
-    Timestamp          decimal,
-    DataId             text,
-    DataVersion        int,
-    SequenceNumber     bigint,
-
-    Iccid              text,
-    InterfaceName      text,
-    MccMnc             int,
-    Mode               int,
-    Rssi               int,
-
-    PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
-);
-/*CREATE CUSTOM INDEX i_monroe_meta_connectivity_timestamp on monroe_meta_connectivity(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};*/
 
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_meta_node_sensor (
@@ -253,8 +225,11 @@ CREATE TABLE monroe_exp_http_download (
     Host           text,
     Speed          double,
     Port           text,
+	
+    ErrorCode      int,
+    Url            text,
 
-    PRIMARY KEY (NodeId, Iccid, Timestamp, SequenceNumber)
+    PRIMARY KEY ((NodeId, Iccid), Timestamp, SequenceNumber)
 );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -451,7 +426,7 @@ CREATE TABLE monroe_exp_tstat_tcp_complete (
     req_tm            decimal,
     res_tm            decimal,
 
-    PRIMARY KEY ((NodeId, Iccid), first, last, c_ip, c_port, s_ip, s_port)
+    PRIMARY KEY ((NodeId, Iccid, s_ip), first, last, c_ip, c_port, s_port)
 );
 
 ///////////////////////////////////////////////////////////////////////////////

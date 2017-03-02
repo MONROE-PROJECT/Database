@@ -1,0 +1,7 @@
+0	Unknown		Black	IconUnknown
+1	Disconnected	Blue	IconDisconnected
+2	No service	Brown	IconNoService
+3	2G		Red	Icon2G
+4	3G		Yellow	Icon3G
+5	LTE		Green	IconLTE
+
