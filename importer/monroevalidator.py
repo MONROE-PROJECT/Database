@@ -23,16 +23,29 @@ It is ok to check for keys that are not enforced by the db if so desired but
 it is the dbs responsibility to ensure that necessary keys exist in the table
 and that the table exist).
 """
+from datetime import datetime, timedelta
 
 # User defined checks should not be called directly
 # Return value: True or "Error message"
 
+TS_GRACE = timedelta(weeks=2)  # set to False to disable ts sanity checks
+
+
+def _ts_sanity_check(ts):
+        if TS_GRACE and ts is not None:
+            ts_date = datetime.fromtimestamp(ts)
+            now = datetime.now()
+            return TS_GRACE > now - ts_date
+        else:
+            return True
+
 
 def _default_accept(entry, VERBOSITY):
-    if VERBOSITY > 1:
-        print ("No validity test for DataId : {}"
-               " -> silently accept").format(entry.get('DataId'))
-    return True
+    log_str = ("No validity test for DataId : {}"
+               " -> check Timestamp (if exist)"
+               " only").format(entry.get('DataId'))
+    _log_msg(log_str, syslog.LOG_INFO, 1)
+    return _ts_sanity_check(entry.get('Timestamp'))
 
 
 def _check_ping(entry, VERBOSITY):
@@ -44,10 +57,10 @@ def _check_ping(entry, VERBOSITY):
             return (entry['SequenceNumber'] >= 0 and
                     entry['Rtt'] > 0 and
                     entry['Bytes'] > 0 and
-                    entry['TimeStamp'] > 0) or "Value error."
+                    _ts_sanity_check(entry['Timestamp'])) or "Value error."
         else:
             return (entry['SequenceNumber'] >= 0 and
-                    entry['TimeStamp'] > 0) or "Value error."
+                    _ts_sanity_check(entry['Timestamp'])) or "Value error."
     except Exception as error:
         return "Missing value in entry {}".format(error)
 
@@ -66,6 +79,6 @@ def check(entry, VERBOSITY):
         result = checks.get(dataid, _default_accept)(entry, VERBOSITY)
     else:
         result = "Input validation failed due to missing DataId"
-    if VERBOSITY > 1 and result is not True:
-        print result
+    if result is not True:
+        _log_msg(log_str, syslog.LOG_WARNING, 1)
     return result is True, result

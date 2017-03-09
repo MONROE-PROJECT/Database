@@ -170,8 +170,9 @@ def handle_file(filename,
         try:
             if not DEBUG:
                 data_id = j['DataId'].lower()
-                if not monroevalidator.check(j, VERBOSITY):
-                    raise Exception("Validation error")
+                (data_ok, log_str) = monroevalidator.check(j, VERBOSITY)
+                if not data_ok:
+                    raise Exception("Validation error : {}".format(log_str))
                 session.execute(prepared_statements[data_id],
                                 [json.dumps(j)])
             processed_inserts.append(nr)
