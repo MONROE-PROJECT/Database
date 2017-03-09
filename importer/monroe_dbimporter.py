@@ -19,7 +19,7 @@ Note: A json object must end with a newline \n (and should for performance
 """
 import json
 import time
-import datetime
+from datetime import date
 import os
 import sys
 from glob import iglob
@@ -45,7 +45,7 @@ VERBOSITY = 1
 
 
 def _log_msg(log_str, syslog_level, verbosity_level):
-    """ Internal method for handling syslog and console messages."""
+    """Internal method for handling syslog and console messages."""
     if not DEBUG:
         syslog.syslog(syslog_level, log_str)
     if VERBOSITY > verbosity_level:
@@ -170,7 +170,7 @@ def handle_file(filename,
         try:
             if not DEBUG:
                 data_id = j['DataId'].lower()
-                if not monroevalidator.check(j, VERBOSITY):
+                if not monroevalidator.check(j, VERBOSITY, DATE_SANITY_CHECK):
                     raise Exception("Validation error")
                 session.execute(prepared_statements[data_id],
                                 [json.dumps(j)])
@@ -267,7 +267,7 @@ def schedule_workers(in_dir,
     async_results = []
 
     # Create outdirs
-    dest_dir_processed = processed_dir + str(datetime.date.today())
+    dest_dir_processed = processed_dir + str(date.today())
     try:
         os.makedirs(dest_dir_processed)
     except OSError as e:
@@ -275,7 +275,7 @@ def schedule_workers(in_dir,
         if e.errno != errno.EEXIST:
             raise e
 
-    dest_dir_failed = failed_dir + str(datetime.date.today())
+    dest_dir_failed = failed_dir + str(date.today())
     try:
         os.makedirs(dest_dir_failed)
     except OSError as e:
