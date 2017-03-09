@@ -214,12 +214,12 @@ def handle_file(filename,
     else:
         dest_path_failed = construct_filepath(filename,
                                               failed_dir,
-                                              "_failed_part",
+                                              "_failed-part",
                                               ".json")
 
         dest_path_processed = construct_filepath(filename,
                                                  processed_dir,
-                                                 "_processed_part",
+                                                 "_processed-part",
                                                  ".json")
         log_str_error = ("Failed {} ({}) inserts in file {} "
                          "saving in {};").format(len(failed_inserts),
