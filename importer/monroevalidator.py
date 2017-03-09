@@ -24,6 +24,8 @@ it is the dbs responsibility to ensure that necessary keys exist in the table
 and that the table exist).
 """
 from datetime import datetime, timedelta
+import syslog
+from monroe_dbimporter import log_msg
 
 # User defined checks should not be called directly
 # Return value: True or "Error message"
@@ -41,11 +43,10 @@ def _ts_sanity_check(ts):
 
 
 def _default_accept(entry, VERBOSITY):
-    log_str = ("No validity test for DataId : {}"
-               " -> check Timestamp (if exist)"
-               " only").format(entry.get('DataId'))
-    _log_msg(log_str, syslog.LOG_INFO, 1)
-    return _ts_sanity_check(entry.get('Timestamp'))
+    log_str = ("No validity test for DataId : {} "
+               "-> silently pass").format(entry.get('DataId'))
+    log_msg(log_str, syslog.LOG_INFO, 1)
+    return True
 
 
 def _check_ping(entry, VERBOSITY):
@@ -57,10 +58,10 @@ def _check_ping(entry, VERBOSITY):
             return (entry['SequenceNumber'] >= 0 and
                     entry['Rtt'] > 0 and
                     entry['Bytes'] > 0 and
-                    _ts_sanity_check(entry['Timestamp'])) or "Value error."
+                    'Timestamp' in entry) or "Value error."
         else:
             return (entry['SequenceNumber'] >= 0 and
-                    _ts_sanity_check(entry['Timestamp'])) or "Value error."
+                    'Timestamp' in entry) or "Value error."
     except Exception as error:
         return "Missing value in entry {}".format(error)
 
@@ -74,11 +75,17 @@ def check(entry, VERBOSITY):
     Validate so the keys/values are reasonable.
     Returns (True/False, True/"Error message")
     """
+    if not _ts_sanity_check(entry.get('Timestamp')):
+        result = ("Input validation failed:"
+                " Timestamp is older than {}").format(TS_GRACE)
+        return (False, result)
+
     dataid = entry.get('DataId')
     if dataid is not None:
         result = checks.get(dataid, _default_accept)(entry, VERBOSITY)
     else:
         result = "Input validation failed due to missing DataId"
+
     if result is not True:
-        _log_msg(log_str, syslog.LOG_WARNING, 1)
-    return result is True, result
+        log_msg(result, syslog.LOG_WARNING, 1)
+    return (result is True, result)

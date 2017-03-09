@@ -25,12 +25,12 @@ import sys
 from glob import iglob
 import argparse
 import textwrap
-import syslog
 from multiprocessing.pool import ThreadPool, cpu_count
 import fnmatch
 import monroevalidator
 import lzma
 import errno
+import syslog
 
 from cassandra.cluster import Cluster
 # from cassandra.query import Statement
@@ -44,8 +44,8 @@ DEBUG = False
 VERBOSITY = 1
 
 
-def _log_msg(log_str, syslog_level, verbosity_level):
-    """Internal method for handling syslog and console messages."""
+def log_msg(log_str, syslog_level, verbosity_level):
+    """Handles syslog and console messages."""
     if not DEBUG:
         syslog.syslog(syslog_level, log_str)
     if VERBOSITY > verbosity_level:
@@ -93,7 +93,7 @@ def parse_json(f):
     if (not each_json_on_single_line):
         log_str = ("possible performance hit : file {} contains "
                    "pretty printed JSON objects").format(f.name)
-        _log_msg(log_str, syslog.LOG_WARNING, 1)
+        log_msg(log_str, syslog.LOG_WARNING, 1)
     return jsons
 
 
@@ -153,7 +153,7 @@ def handle_file(filename,
         log_str = "{} in file, moving {} to {}".format(error,
                                                        filename,
                                                        dest_path)
-        _log_msg(log_str, syslog.LOG_ERR, 1)
+        log_msg(log_str, syslog.LOG_ERR, 1)
         if not DEBUG:
             os.rename(filename, dest_path)
 
@@ -190,7 +190,7 @@ def handle_file(filename,
                    "moving to {}").format(nr_jsons,
                                           filename,
                                           dest_path)
-        _log_msg(log_str, syslog.LOG_INFO, 1)
+        log_msg(log_str, syslog.LOG_INFO, 1)
         if not DEBUG:
             os.rename(filename, dest_path)
 
@@ -208,7 +208,7 @@ def handle_file(filename,
         for nr, error in failed_inserts:
             log_str += "{} Failed with {}, ".format(nr, error)
 
-        _log_msg(log_str, syslog.LOG_ERR, 1)
+        log_msg(log_str, syslog.LOG_ERR, 1)
         if not DEBUG:
             os.rename(filename, dest_path)
 
@@ -237,8 +237,8 @@ def handle_file(filename,
                                                     nr_jsons,
                                                     filename,
                                                     dest_path_processed)
-        _log_msg(log_str_error, syslog.LOG_ERR, 1)
-        _log_msg(log_str_processed, syslog.LOG_INFO, 1)
+        log_msg(log_str_error, syslog.LOG_ERR, 1)
+        log_msg(log_str_processed, syslog.LOG_INFO, 1)
         if not DEBUG:
             os.unlink(filename)
 
@@ -310,7 +310,7 @@ def schedule_workers(in_dir,
         # Parse errors generate inserts = -1, failed = 0
     except Exception as error:
         log_str = "Error in reading return values {}".format(error)
-        _log_msg(log_str, syslog.LOG_ERR, 0)
+        log_msg(log_str, syslog.LOG_ERR, 0)
 
     if results is None:
         insert_count = 0
@@ -328,7 +328,7 @@ def schedule_workers(in_dir,
         except Exception as error:
             log_str = "Error in reading return values {}:".format(error)
             log_str += ",".join(results)
-            _log_msg(log_str, syslog.LOG_ERR, 0)
+            log_msg(log_str, syslog.LOG_ERR, 0)
 
             insert_count = 0
             failed_count = 0
@@ -368,7 +368,7 @@ def parse_files(session,
     while True:
         start_time = time.time()
         log_str = "Start parsing files."
-        _log_msg(log_str, syslog.LOG_INFO, 0)
+        log_msg(log_str, syslog.LOG_INFO, 0)
         (files,
          inserts,
          failed_inserts,
@@ -396,12 +396,12 @@ def parse_files(session,
                                    parse_error_files,
                                    insert_error_files)
         log_str += " failed"
-        _log_msg(log_str, syslog.LOG_INFO, 0)
+        log_msg(log_str, syslog.LOG_INFO, 0)
         # Wait if interval > 0 else finish loop and return
         if (interval > 0):
             wait = interval - elapsed if (interval - elapsed > 0) else 0
             log_str = "Now waiting {} s before next run".format(wait)
-            _log_msg(log_str, syslog.LOG_INFO, 0)
+            log_msg(log_str, syslog.LOG_INFO, 0)
             time.sleep(wait)
         else:
             break
@@ -522,7 +522,7 @@ if __name__ == '__main__':
         log_str = ("--failed ({}) or --processed ({}) "
                    "is a subpath of --indir ({})"
                    ", exiting").format(failed_dir, processed_dir, args.indir)
-        _log_msg(log_str, syslog.LOG_ERR, 0)
+        log_msg(log_str, syslog.LOG_ERR, 0)
         raise SystemExit(1)
 
     # Assuming default port: 9042, clusters and sessions are longlived and
