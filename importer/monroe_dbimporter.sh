@@ -1,6 +1,6 @@
 #!/bin/bash
-export MONROE_DB_USER=monroe
-export MONROE_DB_PASSWD=MMBNinE
+export MONROE_DB_USER=<USER>
+export MONROE_DB_PASSWD=<PASSWORD>
 
 mkdir -p /experiments/processed/
 mkdir -p /experiments/failed-retries/
