@@ -3,7 +3,7 @@ Very simple data importer that inserts json objects into a Cassandra db.
 
 All files in, the specified directory and all subdirectories excluding
 failed and done directories, containing
-json objects are read and parsed into CQL (Cassandra) statements.
+json objects (.json or optionally compressed .xz files) are read and parsed into CQL (Cassandra) statements.
 
 Note: A json object must end with a newline \n (and should for performance
  be on a single line).
