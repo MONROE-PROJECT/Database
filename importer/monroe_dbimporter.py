@@ -83,9 +83,12 @@ def parse_json(f):
                     raise Exception("Parse Error {}".format(error))
 
     if (not each_json_on_single_line):
-        syslog.syslog(syslog.LOG_WARNING,
-                      ("possible performance hit : file {} contains "
-                       "pretty printed JSON objects").format(f.name))
+        log_str = ("possible performance hit : file {} contains "
+                   "pretty printed JSON objects").format(f.name)
+        if not DEBUG:
+            syslog.syslog(syslog.LOG_WARNING, log_str)
+        if VERBOSITY > 1:
+            print log_str
     return jsons
 
 
@@ -304,19 +307,16 @@ def schedule_workers(in_dir,
     pool.close()
     pool.join()
 
-    # WORKAROUND:
-    # File "monroe_dbimporter.py", line 281, in schedule_workers
-    # results = [async_result.get() for async_result in async_results]
-    # File "/usr/lib/python2.7/multiprocessing/pool.py", line 567, in get
-    # raise self._value
-    # The bug seams to only trigger when "parts of a file is faulty"
-    # Workaround disable ouput if there is an exception
     results = None
     try:
         results = [async_result.get() for async_result in async_results]
         # Parse errors generate inserts = -1, failed = 0
     except Exception as error:
-        print "Error in reading return values {}".format(error)
+        log_str = "Error in reading return values {}".format(error)
+        if not DEBUG:
+            syslog.syslog(syslog.LOG_ERR, log_str)
+        if VERBOSITY > 0:
+            print log_str
 
     if results is None:
         insert_count = 0
@@ -332,9 +332,12 @@ def schedule_workers(in_dir,
                                             if (e['inserts'] >= 0 and
                                                 e['inserts'] < e['failed'])])
         except Exception as error:
-            print "Error in parsing return values {}".format(error)
-            for e in results:
-                print e
+            log_str = "Error in reading return values {}:".format(error)
+            log_str += ",".join(results)
+            if not DEBUG:
+                syslog.syslog(syslog.LOG_ERR, log_str)
+            if VERBOSITY > 0:
+                print log_str
 
             insert_count = 0
             failed_count = 0
@@ -373,8 +376,11 @@ def parse_files(session,
     """Scan in_dir for files."""
     while True:
         start_time = time.time()
+        log_str = "Start parsing files."
+        if not DEBUG:
+            syslog.syslog(syslog.LOG_INFO, log_str)
         if VERBOSITY > 0:
-            print('Start parsing files.')
+            print log_str
         (files,
          inserts,
          failed_inserts,
