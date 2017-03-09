@@ -170,7 +170,7 @@ def handle_file(filename,
         try:
             if not DEBUG:
                 data_id = j['DataId'].lower()
-                if not monroevalidator.check(j, VERBOSITY, DATE_SANITY_CHECK):
+                if not monroevalidator.check(j, VERBOSITY):
                     raise Exception("Validation error")
                 session.execute(prepared_statements[data_id],
                                 [json.dumps(j)])
