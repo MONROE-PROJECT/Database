@@ -191,7 +191,7 @@ def DumpOneDay(session, daysBack):
 	fileName = FileNamePrefix(startTime) + "{}_monroe_exp_tstat_udp_complete.csv".format(startTime)
 	with open(fileName, "wt") as output:
 		output.write("NodeId,Iccid,DataId,c_ip,c_port,c_first_abs,c_durat,c_bytes_all,c_pkts_all,c_isint,c_iscrypto,c_type,s_ip,s_port,s_first_abs,s_durat,s_bytes_all,s_pkts_all,s_isint,s_iscrypto,s_type,fqdn\n")
-		query = "select * from monroe_exp_tstat_udp_complete where c_first_abs >= {} and c_first_abs < {} allow filtering".format(startTime*1000, endTime*1000)
+		query = "select * from monroe_exp_tstat_udp_complete where c_first_abs >= {} and c_first_abs < {} allow filtering".format(startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
 		count = 0
@@ -225,7 +225,7 @@ def DumpOneDay(session, daysBack):
 	fileName = FileNamePrefix(startTime) + "{}_monroe_exp_tstat_tcp_complete.csv".format(startTime)
 	with open(fileName, "wt") as output:
 		output.write("NodeId,Iccid,DataId,c_ip,c_port,c_pkts_all,c_rst_cnt,c_ack_cnt,c_ack_cnt_p,c_bytes_uniq,c_pkts_data,c_bytes_all,c_pkts_retx,c_bytes_retx,c_pkts_ooo,c_syn_cnt,c_fin_cnt,s_ip,s_port,s_pkts_all,s_rst_cnt,s_ack_cnt,s_ack_cnt_p,s_bytes_uniq,s_pkts_data,s_bytes_all,s_pkts_retx,s_bytes_retx,s_pkts_ooo,s_syn_cnt,s_fin_cnt,first,last,durat,c_first,s_first,c_last,s_last,c_first_ack,s_first_ack,c_isint,s_isint,c_iscrypto,s_iscrypto,con_t,p2p_t,http_t,c_rtt_avg,c_rtt_min,c_rtt_max,c_rtt_std,c_rtt_cnt,c_ttl_min,c_ttl_max,s_rtt_avg,s_rtt_min,s_rtt_max,s_rtt_std,s_rtt_cnt,s_ttl_min,s_ttl_max,p2p_st,ed2k_data,ed2k_sig,ed2k_c2s,ed2k_c2c,ed2k_chat,c_f1323_opt,c_tm_opt,c_win_scl,c_sack_opt,c_sack_cnt,c_mss,c_mss_max,c_mss_min,c_win_max,c_win_min,c_win_0,c_cwin_max,c_cwin_min,c_cwin_ini,c_pkts_rto,c_pkts_fs,c_pkts_reor,c_pkts_dup,c_pkts_unk,c_pkts_fc,c_pkts_unrto,c_pkts_unfs,c_syn_retx,s_f1323_opt,s_tm_opt,s_win_scl,s_sack_opt,s_sack_cnt,s_mss,s_mss_max,s_mss_min,s_win_max,s_win_min,s_win_0,s_cwin_max,s_cwin_min,s_cwin_ini,s_pkts_rto,s_pkts_fs,s_pkts_reor,s_pkts_dup,s_pkts_unk,s_pkts_fc,s_pkts_unrto,s_pkts_unfs,s_syn_retx,http_req_cnt,http_res_cnt,http_res,c_pkts_push,s_pkts_push,c_tls_SNI,s_tls_SCN,c_npnalpn,s_npnalpn,c_tls_sesid,c_last_handshakeT,s_last_handshakeT,c_appdataT,s_appdataT,c_appdataB,s_appdataB,fqdn,dns_rslv,req_tm,res_tm\n")
-		query = "select * from monroe_exp_tstat_tcp_complete where first >= {} and first < {} allow filtering".format(startTime*1000, endTime*1000)
+		query = "select * from monroe_exp_tstat_tcp_complete where first >= {} and first < {} allow filtering".format(startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
 		count = 0
@@ -242,7 +242,7 @@ def DumpOneDay(session, daysBack):
 	fileName = FileNamePrefix(startTime) + "{}_monroe_exp_tstat_tcp_nocomplete.csv".format(startTime)
 	with open(fileName, "wt") as output:
 		output.write("NodeId,Iccid,DataId,c_ip,c_port,c_pkts_all,c_rst_cnt,c_ack_cnt,c_ack_cnt_p,c_bytes_uniq,c_pkts_data,c_bytes_all,c_pkts_retx,c_bytes_retx,c_pkts_ooo,c_syn_cnt,c_fin_cnt,s_ip,s_port,s_pkts_all,s_rst_cnt,s_ack_cnt,s_ack_cnt_p,s_bytes_uniq,s_pkts_data,s_bytes_all,s_pkts_retx,s_bytes_retx,s_pkts_ooo,s_syn_cnt,s_fin_cnt,first,last,durat,c_first,s_first,c_last,s_last,c_first_ack,s_first_ack,c_isint,s_isint,c_iscrypto,s_iscrypto,con_t,p2p_t,http_t\n")
-		query = "select * from monroe_exp_tstat_tcp_nocomplete where first >= {} and first < {} allow filtering".format(startTime*1000, endTime*1000)
+		query = "select * from monroe_exp_tstat_tcp_nocomplete where first >= {} and first < {} allow filtering".format(startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
 		count = 0
