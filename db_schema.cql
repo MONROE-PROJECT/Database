@@ -547,3 +547,23 @@ CREATE TABLE monroe_exp_exhaustive_paris (
 CREATE CUSTOM INDEX i_monroe_exp_exhaustive_paris_timestamp on monroe_exp_exhaustive_paris(timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
 CREATE CUSTOM INDEX i_monroe_exp_exhaustive_paris_targetdomainname on monroe_exp_exhaustive_paris(targetdomainname) using 'org.apache.cassandra.index.sasi.SASIIndex';
 
+///////////////////////////////////////////////////////////////////////////////
+CREATE TABLE monroe_exp_udp_ping (
+    DataId         text,
+    NodeId         text,
+    Timestamp      decimal,
+    SequenceNumber bigint,
+    DataVersion    int,
+
+    Bytes          int,
+    Host           text,
+    InterfaceName  text,
+    Operator       text,
+    ICCID          text,
+    Rtt            double,
+    ErrorCode      int,         // 0 = OK, others = C++ errno
+    ErrorString    text,
+
+    PRIMARY KEY (NodeId, Timestamp, Iccid, SequenceNumber)
+) WITH CLUSTERING ORDER BY (Timestamp DESC, ICCID ASC, SequenceNumber DESC);
+//CREATE CUSTOM INDEX i_monroe_exp_ping_udp_timestamp on monroe_exp_ping_udp(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
