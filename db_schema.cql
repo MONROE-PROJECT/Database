@@ -567,3 +567,50 @@ CREATE TABLE monroe_exp_udp_ping (
     PRIMARY KEY (NodeId, Timestamp, Iccid, SequenceNumber)
 ) WITH CLUSTERING ORDER BY (Timestamp DESC, ICCID ASC, SequenceNumber DESC);
 //CREATE CUSTOM INDEX i_monroe_exp_ping_udp_timestamp on monroe_exp_ping_udp(Timestamp) using 'org.apache.cassandra.index.sasi.SASIIndex' with options={'mode':'SPARSE'};
+
+///////////////////////////////////////////////////////////////////////////////
+CREATE TABLE monroe_exp_rmbt (
+Timestamp                     decimal, 
+Iccid                         text, 
+NodeId                        text, 
+DataVersion                   int, 
+DataId                        text, 
+SequenceNumber                bigint,
+Guid                          text, 
+Operator                      text,
+
+ErrorCode                     int,
+cnf_server_host               text, 
+res_id_test                   text, 
+res_time_start_s              decimal, 
+res_time_end_s                decimal,
+res_status                    text, 
+res_status_msg                text, 
+res_version_client            text, 
+res_version_server            text, 
+res_server_ip                 text, 
+res_server_port               int, 
+res_encrypt                   boolean,
+res_chunksize                 int,
+res_tcp_congestion            text,
+res_total_bytes_dl            bigint,
+res_total_bytes_ul            bigint,
+res_uname_sysname             text,
+res_uname_nodename            text, 
+res_uname_release             text, 
+res_uname_version             text, 
+res_uname_machine             text, 
+res_rtt_tcp_payload_num       int,
+res_rtt_tcp_payload_client_ns bigint,
+res_rtt_tcp_payload_server_ns bigint,
+res_dl_num_flows              int,
+res_dl_time_ns                bigint,
+res_dl_bytes                  bigint,
+res_dl_throughput_kbps        decimal,
+res_ul_num_flows              int,
+res_ul_time_ns                bigint,
+res_ul_bytes                  bigint,
+res_ul_throughput_kbps        decimal,
+
+PRIMARY KEY (NodeId, Timestamp, Iccid, SequenceNumber)
+) WITH CLUSTERING ORDER BY (Timestamp DESC, ICCID ASC, SequenceNumber DESC);
