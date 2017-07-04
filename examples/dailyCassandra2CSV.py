@@ -254,9 +254,27 @@ def DumpOneDay(session, daysBack):
 			count += 1
 	print FormatDate(), "Dumped {} rows to {}\n".format(count, fileName)
 
+	########## monroe_exp_rmbt ###############
+	session.default_fetch_size = 1000
+	fileName = FileNamePrefix(startTime) + "{}_monroe_exp_rmbt.csv".format(startTime)
+	with open(fileName, "wt") as output:	
+		output.write("timestamp,iccid,nodeid,dataversion,dataid,sequencenumber,guid,operator,errorcode,cnf_server_host,res_id_test,res_time_start_s,res_time_end_s,res_status,res_status_msg,res_version_client,res_version_server,res_server_ip,res_server_port,res_encrypt,res_chunksize,res_tcp_congestion,res_total_bytes_dl,res_total_bytes_ul,res_uname_sysname,res_uname_nodename,res_uname_release,res_uname_version,res_uname_machine,res_rtt_tcp_payload_num,res_rtt_tcp_payload_client_ns,res_rtt_tcp_payload_server_ns,res_dl_num_flows,res_dl_time_ns,res_dl_bytes,res_dl_throughput_kbps,res_ul_num_flows,res_ul_time_ns,res_ul_bytes,res_ul_throughput_kbps\n")
+		query = "select * from monroe_exp_rmbt where timestamp >= {} and timestamp < {} allow filtering".format(startTime, endTime)
+		print query
+		rows = session.execute(query, timeout=None)
+		count = 0;
+		for row in rows:
+			# The driver automatically fetches the next page of rows when the current one is exhausted.
+			try:
+				output.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(row.timestamp, row.iccid, row.nodeid, row.dataversion, row.dataid, row.sequencenumber, row.guid, row.operator.encode('latin-1'), row.errorcode, row.cnf_server_host, row.res_id_test, row.res_time_start_s, row.res_time_end_s, row.res_status, row.res_status_msg, row.res_version_client, row.res_version_server, row.res_server_ip, row.res_server_port, row.res_encrypt, row.res_chunksize, row.res_tcp_congestion, row.res_total_bytes_dl, row.res_total_bytes_ul, row.res_uname_sysname, row.res_uname_nodename, row.res_uname_release, row.res_uname_version, row.res_uname_machine, row.res_rtt_tcp_payload_num, row.res_rtt_tcp_payload_client_ns, row.res_rtt_tcp_payload_server_ns, row.res_dl_num_flows, row.res_dl_time_ns, row.res_dl_bytes, row.res_dl_throughput_kbps, row.res_ul_num_flows, row.res_ul_time_ns, row.res_ul_bytes, row.res_ul_throughput_kbps))
+			except Exception as error:
+                                print "Error in row:", row, error
+			count += 1
+	print FormatDate(), "Dumped {} rows to {}\n".format(count, fileName)
+
 if __name__ == '__main__':
 
-	auth = PlainTextAuthProvider(username = "xxxx", password = "yyyy")
+	auth = PlainTextAuthProvider(username = "xxx", password = "yyyy")
 	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
 	session = cluster.connect("monroe") # Set default keyspace to 'monroe'
