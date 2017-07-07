@@ -38,7 +38,7 @@ if __name__ == '__main__':
 	args = ParseCommandLine()
 
 	# Connect to the DB
-	auth = PlainTextAuthProvider(username = "xxxx", password = "yyyy")
+	auth = PlainTextAuthProvider(username = "xxxx", password = "yyy")
 	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
 	session = cluster.connect("monroe") # Set default keyspace to 'monroe'
