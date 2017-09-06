@@ -21,3 +21,21 @@ for fichero in 296_297/*.csv; do  ./importTrainTelemetry.py -n 297 -f $fichero; 
 for fichero in 304_305/*.csv; do  ./importTrainTelemetry.py -n 304 -f $fichero; done
 for fichero in 304_305/*.csv; do  ./importTrainTelemetry.py -n 305 -f $fichero; done
 
+for fichero in 448_449/*.csv; do  ./importTrainTelemetry.py -n 448 -f $fichero; done
+for fichero in 448_449/*.csv; do  ./importTrainTelemetry.py -n 449 -f $fichero; done
+
+for fichero in 366_367/*.csv; do  ./importTrainTelemetry.py -n 366 -f $fichero; done
+for fichero in 366_367/*.csv; do  ./importTrainTelemetry.py -n 367 -f $fichero; done
+
+for fichero in 368_369/*.csv; do  ./importTrainTelemetry.py -n 368 -f $fichero; done
+for fichero in 368_369/*.csv; do  ./importTrainTelemetry.py -n 369 -f $fichero; done
+
+for fichero in 462_463/*.csv; do  ./importTrainTelemetry.py -n 462 -f $fichero; done
+for fichero in 462_463/*.csv; do  ./importTrainTelemetry.py -n 463 -f $fichero; done
+
+for fichero in 460_461/*.csv; do  ./importTrainTelemetry.py -n 460 -f $fichero; done
+for fichero in 460_461/*.csv; do  ./importTrainTelemetry.py -n 461 -f $fichero; done
+
+for fichero in 456_457/*.csv; do  ./importTrainTelemetry.py -n 456 -f $fichero; done
+for fichero in 456_457/*.csv; do  ./importTrainTelemetry.py -n 457 -f $fichero; done
+
