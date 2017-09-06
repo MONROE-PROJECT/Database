@@ -169,6 +169,7 @@ CREATE TABLE monroe_meta_node_event (
     EventType          text,
     Message            text,
     User               text,
+    id                 bigint,
 
     //WatchdogFailed     text,
     //WatchdogRepaired   text,
