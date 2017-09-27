@@ -94,7 +94,7 @@ def DumpOneDay(session, daysBack):
 		count = 0
 		for row in rows:
 			try:
-				nmea = row.nmea.replace("\r","\\r").replace("\n","\\n")
+				nmea = row.nmea.replace("\r","\\r").replace("\n","\\n") if row.nmea is not None else ""
 				output.write('{},{},{},{},{},{},{},{},"{}",{},{}\n'.format(row.nodeid, row.timestamp, row.sequencenumber, row.altitude, row.dataid, row.dataversion, row.latitude, row.longitude, nmea, row.satellitecount, row.speed))
 			except Exception as error:
                                 print "Error in row:", row, error
@@ -274,7 +274,7 @@ def DumpOneDay(session, daysBack):
 
 if __name__ == '__main__':
 
-	auth = PlainTextAuthProvider(username = "xxxx", password = "yyyy")
+	auth = PlainTextAuthProvider(username = "xxxx", password = "yyy")
 	cluster = Cluster(contact_points = ['127.0.0.1'], port = 9042, auth_provider = auth)
 	session = None
 	session = cluster.connect("monroe") # Set default keyspace to 'monroe'
