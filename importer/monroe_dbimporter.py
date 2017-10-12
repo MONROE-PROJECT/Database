@@ -19,13 +19,14 @@ Note: A json object must end with a newline \n (and should for performance
 """
 import json
 import time
-from datetime import date
+from datetime import date, datetime
 import os
 import sys
 from glob import iglob
 import argparse
 import textwrap
-from multiprocessing.pool import ThreadPool, cpu_count
+from multiprocessing.pool import ThreadPool
+from multiprocessing import cpu_count
 import fnmatch
 import monroevalidator
 import lzma
@@ -49,7 +50,7 @@ def log_msg(log_str, syslog_level, verbosity_level):
     if not DEBUG:
         syslog.syslog(syslog_level, log_str)
     if VERBOSITY > verbosity_level:
-        print log_str
+        print (log_str)
 
 
 def parse_json(f):
@@ -358,6 +359,7 @@ def schedule_workers(in_dir,
 
 def parse_files(session,
                 interval,
+                shutoff_time,
                 in_dir,
                 failed_dir,
                 processed_dir,
@@ -397,7 +399,15 @@ def parse_files(session,
                                    insert_error_files)
         log_str += " failed"
         log_msg(log_str, syslog.LOG_INFO, 0)
-        # Wait if interval > 0 else finish loop and return
+
+        # If we have a "timer" set return if it is due
+        if (shutoff_time > 0 and time.time() > shutoff_time):
+            diff = shutoff_time - time.time()
+            log_str = "Exiting due to shutoff timer: {}".format(diff)
+            log_msg(log_str, syslog.LOG_INFO, 0)
+            break
+
+        # Wait if interval > 0 else return
         if (interval > 0):
             wait = interval - elapsed if (interval - elapsed > 0) else 0
             log_str = "Now waiting {} s before next run".format(wait)
@@ -433,18 +443,23 @@ def create_arg_parser():
                         type=int,
                         default=-1,
                         help="Seconds between scans (default -1, run once)")
+    parser.add_argument('-s', '--shutoff',
+                        metavar='N',
+                        type=int,
+                        default=-1,
+                        help="How many hours to run (default -1, run forever)")
     parser.add_argument('-c', '--concurrency',
                         metavar='N',
                         default=1,
                         type=int,
-                        choices=xrange(1, max_concurrency),
+                        choices=range(1, max_concurrency),
                         help=("number of cores to utilize ("
                               "default 1, "
                               "max={})").format(max_concurrency - 1))
     parser.add_argument('--verbosity',
                         default=1,
                         type=int,
-                        choices=xrange(0, 3),
+                        choices=range(0, 3),
                         help="Verbosity level 0-2(default 1)")
     parser.add_argument('-I', '--indir',
                         metavar='DIR',
@@ -505,15 +520,23 @@ def parse_special_args(args, parser):
     failed_dir = os.path.realpath(args.failed) + os.sep
     processed_dir = os.path.realpath(args.processed) + os.sep
 
-    return (db_user, db_password, failed_dir, processed_dir)
+    # If we have a end time set create a shutoff time (epoch)
+    if (args.shutoff > 0):
+        shutoff_time = time.time() + 60*60*args.shutoff
+    else:
+        shutoff_time = -1
+
+    return (db_user, db_password, failed_dir, processed_dir, shutoff_time)
 
 if __name__ == '__main__':
     parser = create_arg_parser()
     args = parser.parse_args()
 
-    db_user, db_password, failed_dir, processed_dir = parse_special_args(
-        args,
-        parser)
+    (db_user,
+     db_password,
+     failed_dir,
+     processed_dir,
+     shutoff_time) = parse_special_args( args, parser)
     DEBUG = args.debug
     VERBOSITY = args.verbosity
 
@@ -532,34 +555,41 @@ if __name__ == '__main__':
     prepared_statements = {}
     if not DEBUG:
         auth = PlainTextAuthProvider(username=db_user, password=db_password)
-        cluster = Cluster(args.hosts, auth_provider=auth)
+        cluster = Cluster(args.hosts, auth_provider=auth, protocol_version=4)
         session = cluster.connect(args.keyspace)
         session.row_factory = dict_factory
-        table_names = cluster.metadata.keyspaces[args.keyspace].tables.keys()
+        table_names = list(cluster.metadata.keyspaces[args.keyspace].tables.keys())
         for table_name in table_names:
             query = 'INSERT INTO {} JSON ?'.format(table_name)
             data_id = table_name.replace('_', '.')
             prepared_statements[data_id] = session.prepare(query)
     else:
-        print("Debug mode: will not insert any posts or move any files\n"
+        date_shutoff = (datetime.
+                        fromtimestamp(shutoff_time).
+                        strftime('%Y-%m-%d %H:%M:%S'))
+        print(("Debug mode: will not insert any posts or move any files\n"
               "Info and Statements are printed to stdout\n"
               "{} called with variables \nuser={} \npassword={} \nhost={} "
               "\nkeyspace={} \nindir={} \nfaileddir={} \nprocessedir={} "
               "\nrecursive={} "
-              "\ninterval={} \nConcurrency={}\n").format(CMD_NAME,
-                                                         db_user,
-                                                         db_password,
-                                                         args.hosts,
-                                                         args.keyspace,
-                                                         args.indir,
-                                                         failed_dir,
-                                                         processed_dir,
-                                                         args.recursive,
-                                                         args.interval,
-                                                         args.concurrency)
+              "\ninterval={} "
+              "\nConcurrency={} "
+              "\nshutoff_time={}").format(CMD_NAME,
+                                           db_user,
+                                           db_password,
+                                           args.hosts,
+                                           args.keyspace,
+                                           args.indir,
+                                           failed_dir,
+                                           processed_dir,
+                                           args.recursive,
+                                           args.interval,
+                                           args.concurrency,
+                                           date_shutoff))
 
     parse_files(session,
                 args.interval,
+                shutoff_time,
                 args.indir,
                 failed_dir,
                 processed_dir,
