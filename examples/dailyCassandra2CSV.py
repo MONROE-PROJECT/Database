@@ -129,7 +129,7 @@ def DumpOneDay(session, daysBack):
 		count = 0
 		for row in rows:
 			try:
-				output.write('{},{},{},{},{},{},"{}",{}\n'.format(row.nodeid, row.sequencenumber, row.timestamp, row.dataid, row.dataversion, row.eventtype, row.message, row.user))
+				output.write('{},{},{},{},{},{},"{}",{},{}\n'.format(row.nodeid, row.sequencenumber, row.timestamp, row.dataid, row.dataversion, row.eventtype, row.message, row.user, row.id))
 			except Exception as error:
                                 print "Error in row:", row, error
 			count += 1
