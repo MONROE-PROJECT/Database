@@ -122,7 +122,7 @@ def DumpOneDay(session, daysBack):
 	session.default_fetch_size = 1000
 	fileName = FileNamePrefix(startTime) + "{}_monroe_meta_node_event.csv".format(startTime)
 	with open(fileName, "wt") as output:
-		output.write("nodeid, sequencenumber, timestamp, dataid, dataversion, eventtype, message, user\n")
+		output.write("nodeid, sequencenumber, timestamp, dataid, dataversion, eventtype, message, user, id\n")
 		query = "select * from monroe_meta_node_event where timestamp >= {} and timestamp < {} allow filtering".format(startTime, endTime)
 		print query
 		rows = session.execute(query, timeout=None)
