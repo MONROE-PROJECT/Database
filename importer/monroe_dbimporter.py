@@ -53,7 +53,7 @@ def log_msg(log_str, syslog_level, verbosity_level):
         print (log_str)
 
 
-def parse_json(f):
+def parse_json(f, filename):
     """
     Parse JSON objects from open file f.
 
@@ -61,6 +61,7 @@ def parse_json(f):
     across several lines. Two objects may not occupy the same line.
     """
     jsons = []
+    fname, fextension = os.path.splitext(filename)
     for line in f:
         # This while loops allow JSON objects to be pretty printed in the files
         # WARNING: A single corrupt JSON object invalidates the entire file.
@@ -91,9 +92,10 @@ def parse_json(f):
                     # malformed file, discard entire file for now
                     raise Exception("Parse Error {}".format(error))
 
-    if (not each_json_on_single_line):
+    #TODO : Check why xz is on multiple line
+    if (not each_json_on_single_line and not fextension.endswith('.xz')):
         log_str = ("possible performance hit : file {} contains "
-                   "pretty printed JSON objects").format(f.name)
+                   "pretty printed JSON objects").format(filename)
         log_msg(log_str, syslog.LOG_WARNING, 1)
     return jsons
 
@@ -132,10 +134,10 @@ def handle_file(filename,
             # WORKAROUND to avoid CRASH in LZMAFile 
 	    with open(filename, 'rb') as f:
 		complete_file =  iter(lzma.LZMADecompressor().decompress(f.read()))
-                json_store.extend(parse_json(complete_file))
+                json_store.extend(parse_json(complete_file, filename))
         elif fextension.endswith('.json'):
             with open(filename, 'r') as f:
-                json_store.extend(parse_json(f))
+                json_store.extend(parse_json(f, filename))
         else:
             raise Exception("Unknown fileformat {}".format(fextension))
 
