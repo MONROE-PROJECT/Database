@@ -93,7 +93,7 @@ def parse_json(f, filename):
                     raise Exception("Parse Error {}".format(error))
 
     #TODO : Check why xz is on multiple line
-    if (not each_json_on_single_line and not fextension.endswith('.xz')):
+    if (not each_json_on_single_line):
         log_str = ("possible performance hit : file {} contains "
                    "pretty printed JSON objects").format(filename)
         log_msg(log_str, syslog.LOG_WARNING, 1)
@@ -133,7 +133,7 @@ def handle_file(filename,
         if fextension.endswith('.xz'):
             # WORKAROUND to avoid CRASH in LZMAFile 
 	    with open(filename, 'rb') as f:
-		complete_file =  iter(lzma.LZMADecompressor().decompress(f.read()))
+		complete_file =  iter(lzma.LZMADecompressor().decompress(f.read()).splitlines())
                 json_store.extend(parse_json(complete_file, filename))
         elif fextension.endswith('.json'):
             with open(filename, 'r') as f:
