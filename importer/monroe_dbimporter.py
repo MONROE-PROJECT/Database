@@ -129,13 +129,10 @@ def handle_file(filename,
         # Read and parse file
         fname, fextension = os.path.splitext(filename)
         if fextension.endswith('.xz'):
-            # WORKAROUND to avoid BUG in LZMAFile with "with" statement
-            # http://tinyurl.com/znopgwy
-            f = lzma.LZMAFile(filename, 'r')
-            try:
-                json_store.extend(parse_json(f))
-            finally:
-                f.close()
+            # WORKAROUND to avoid CRASH in LZMAFile 
+	    with open(filename, 'rb') as f:
+		complete_file =  iter(lzma.LZMADecompressor().decompress(f.read()))
+                json_store.extend(parse_json(complete_file))
         elif fextension.endswith('.json'):
             with open(filename, 'r') as f:
                 json_store.extend(parse_json(f))
@@ -294,6 +291,7 @@ def schedule_workers(in_dir,
             for filename in fnmatch.filter(files, extension):
                 path = os.path.join(root, filename)
                 file_count += 1
+		log_msg("Start : {}".format(path), syslog.LOG_INFO, 1)
                 result = pool.apply_async(handle_file,
                                           (path,
                                            dest_dir_failed,
