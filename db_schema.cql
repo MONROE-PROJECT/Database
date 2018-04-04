@@ -617,3 +617,37 @@ NWMCCMNC                      int,
 
 PRIMARY KEY (NodeId, Timestamp, Iccid, SequenceNumber)
 ) WITH CLUSTERING ORDER BY (Timestamp DESC, ICCID ASC, SequenceNumber DESC);
+
+//////////////////////////////////////////////////////////////////////////
+CREATE TABLE monroe.monroe_exp_headless_browsertime (
+    dataid text,
+    dataversion int,
+    nodeid text,
+    timestamp decimal,
+    sequencenumber bigint,
+    browser text,
+    country text,
+    firstpaint double,
+    fullyloaded double,
+    iccid text,
+    imsimccmnc int,
+    info text,
+    interfacename text,
+    internalinterface text,
+    ipaddress text,
+    navigationtiming text,
+    nwmccmnc int,
+    ops text,
+    pageinfo text,
+    pageloadtime double,
+    pagetimings text,
+    ping_avg double,
+    ping_exp boolean,
+    ping_max double,
+    ping_min double,
+    protocol text,
+    resourcetimings text,
+    rumspeedindex double,
+    url text,
+    PRIMARY KEY (dataid, dataversion, nodeid, timestamp, sequencenumber)
+);
