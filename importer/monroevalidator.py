@@ -45,7 +45,7 @@ def _ts_sanity_check(ts):
 def _default_accept(entry, VERBOSITY):
     log_str = ("No validity test for DataId : {} "
                "-> silently pass").format(entry.get('DataId'))
-    log_msg(log_str, syslog.LOG_INFO, 1)
+    # log_msg(log_str, syslog.LOG_INFO, 1)
     return True
 
 
