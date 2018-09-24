@@ -619,7 +619,7 @@ PRIMARY KEY (NodeId, Timestamp, Iccid, SequenceNumber)
 ) WITH CLUSTERING ORDER BY (Timestamp DESC, ICCID ASC, SequenceNumber DESC);
 
 //////////////////////////////////////////////////////////////////////////
-CREATE TABLE monroe.monroe_exp_headless_browsertime (
+CREATE TABLE monroe.monroe_exp_headless_browser (
     dataid text,
     dataversion int,
     nodeid text,
@@ -649,5 +649,5 @@ CREATE TABLE monroe.monroe_exp_headless_browsertime (
     resourcetimings text,
     rumspeedindex double,
     url text,
-    PRIMARY KEY (dataid, dataversion, nodeid, timestamp, sequencenumber)
+    PRIMARY KEY (nodeid, timestamp, sequencenumber)
 );
