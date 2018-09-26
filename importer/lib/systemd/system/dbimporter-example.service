@@ -1,0 +1,19 @@
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description=DB Importer Metadata
+After=network.target
+
+[Service]
+User=rsync
+Group=rsync
+Environment=MONROE_DB_USER=<redacted>
+Environment=MONROE_DB_PASSWD=<redacted>
+ExecStart=/usr/bin/python /opt/monroe/importer/monroe_dbimporter.py --indir /experiments/monroe/metadata --failed /experiments/failed/ --processed /experiments/processed/ --authenv  --host=127.0.0.1 --keyspace=monroe --interval=30  --verbosity=1 --concurrency=2 --recursive --shutoff=24
+Type=simple
+Restart=always
+RestartSec=120
+
+StandardError=null
+StandardOutput=null
