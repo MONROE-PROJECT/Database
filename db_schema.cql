@@ -146,7 +146,7 @@ CREATE TABLE monroe_meta_node_sensor (
     Apps                   text,
     Free                   text,
     Swap                   text,
-	
+
 	usb0                   text,
 	usb0charging           text,
 	usb1                   text,
@@ -226,7 +226,7 @@ CREATE TABLE monroe_exp_http_download (
     Host           text,
     Speed          double,
     Port           text,
-	
+
     ErrorCode      int,
     Url            text,
 
@@ -285,7 +285,7 @@ CREATE TABLE monroe_exp_tstat_http_complete (
     user_agent_range  text,
     cookie_location          text,
     dnt_set_cookie          text,
-    
+
     PRIMARY KEY ((NodeId, Iccid), time_abs, c_ip, c_port, s_ip, s_port)
 );
 
@@ -493,7 +493,7 @@ CREATE TABLE monroe_exp_simple_traceroute (
     DataId             text,
     DataVersion        int,
     containerTimestamp int,
-    
+
     hop                int,
     targetdomainname   text,
     InterfaceName      text,
@@ -571,36 +571,36 @@ CREATE TABLE monroe_exp_udp_ping (
 
 ///////////////////////////////////////////////////////////////////////////////
 CREATE TABLE monroe_exp_nettest (
-Timestamp                     decimal, 
-Iccid                         text, 
-NodeId                        text, 
-DataVersion                   int, 
-DataId                        text, 
+Timestamp                     decimal,
+Iccid                         text,
+NodeId                        text,
+DataVersion                   int,
+DataId                        text,
 SequenceNumber                bigint,
-Guid                          text, 
+Guid                          text,
 Operator                      text,
 
 ErrorCode                     int,
-cnf_server_host               text, 
-res_id_test                   text, 
-res_time_start_s              decimal, 
+cnf_server_host               text,
+res_id_test                   text,
+res_time_start_s              decimal,
 res_time_end_s                decimal,
-res_status                    text, 
-res_status_msg                text, 
-res_version_client            text, 
-res_version_server            text, 
-res_server_ip                 text, 
-res_server_port               int, 
+res_status                    text,
+res_status_msg                text,
+res_version_client            text,
+res_version_server            text,
+res_server_ip                 text,
+res_server_port               int,
 res_encrypt                   boolean,
 res_chunksize                 int,
 res_tcp_congestion            text,
 res_total_bytes_dl            bigint,
 res_total_bytes_ul            bigint,
 res_uname_sysname             text,
-res_uname_nodename            text, 
-res_uname_release             text, 
-res_uname_version             text, 
-res_uname_machine             text, 
+res_uname_nodename            text,
+res_uname_release             text,
+res_uname_version             text,
+res_uname_machine             text,
 res_rtt_tcp_payload_num       int,
 res_rtt_tcp_payload_client_ns bigint,
 res_rtt_tcp_payload_server_ns bigint,
@@ -651,3 +651,20 @@ CREATE TABLE monroe.monroe_exp_headless_browser (
     url text,
     PRIMARY KEY (nodeid, timestamp, sequencenumber)
 );
+CREATE TABLE monroe_meta_device_wlan (
+DataId             text,
+InterfaceName      text,
+SequenceNumber     bigint,
+DataVersion        int,
+Timestamp          decimal,
+NodeId             text,
+ESSID              text,
+Noise              int,
+RSSI               int,
+Quality            int,
+IPAddress          text,
+
+    PRIMARY KEY (NodeId, Timestamp, SequenceNumber)
+);
+
+
